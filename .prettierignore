@@ -1,0 +1,10 @@
+.next
+node_modules
+pnpm-lock.yaml
+server/db/migrations
+playwright-report
+test-results
+components/ui
+
+# planning artifacts
+.superpowers

@@ -1,4 +1,39 @@
 # Planning artifacts
 docs/superpowers/
 SPEC.md
+plan.md
+todo.md
 tasks/
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+pnpm-debug.log*
+
+# env files
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
