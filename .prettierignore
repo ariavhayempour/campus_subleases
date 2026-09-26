@@ -5,6 +5,7 @@ server/db/migrations
 playwright-report
 test-results
 components/ui
+supabase/.temp
 
 # planning artifacts
 .superpowers
