@@ -1,5 +1,5 @@
 import { db } from '@/server/db/client';
-import { schools, users } from '@/server/db/schema';
+import { listings, schools, users } from '@/server/db/schema';
 
 let sequence = 0;
 const nextId = (): string => `${Date.now().toString(36)}${(sequence += 1)}`;
@@ -31,4 +31,32 @@ export async function createSchool(
     })
     .returning();
   return row;
+}
+
+export function listingValues(
+  ownerId: string,
+  schoolId: string,
+  overrides: Partial<typeof listings.$inferInsert> = {},
+): typeof listings.$inferInsert {
+  return {
+    ownerId,
+    schoolId,
+    type: 'apartment',
+    title: 'Sunny studio near campus',
+    description: 'Bright studio with big windows, five minutes from campus.',
+    rentCents: 95_000,
+    availableFrom: '2027-01-01',
+    availableTo: '2027-05-31',
+    bedrooms: 0,
+    bathrooms: 1,
+    roommatesCount: 0,
+    privateBathroom: null,
+    address: '123 State St',
+    city: 'Madison',
+    state: 'WI',
+    zip: '53703',
+    location: { lng: -89.39, lat: 43.07 },
+    furnished: true,
+    ...overrides,
+  };
 }

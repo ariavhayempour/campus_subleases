@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { LOCAL_DATABASE_URL } from './tests/local-db';
+import { LOCAL_DATABASE_URL } from './tests/local-db.ts';
 
 export default defineConfig({
   resolve: { alias: { '@': path.resolve(import.meta.dirname) } },
