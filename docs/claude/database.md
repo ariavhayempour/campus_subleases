@@ -45,3 +45,11 @@ Launch schools are inserted by a custom migration (`*_seed-schools.sql`, `ON CON
 so every environment gets them. Adding a school = a new custom migration with one `INSERT`. School
 slugs share the top-level URL space and must not appear in `lib/reserved-slugs.ts`
 (`tests/services/schools.test.ts` checks every stored slug).
+
+## Users
+
+`users` mirrors Clerk by user ID. Accounts are email + password with first and last name; there
+are no usernames, and email lives only in Clerk. `first_name`/`last_name` are nullable (Clerk
+allows users without names, e.g. created from the dashboard). `display_name` is never edited
+directly: `syncUserFromClerk` and `ensureUser` derive it with `formatDisplayName`
+(`lib/display-name.ts`) as "First L." so the full last name is never shown to other users.
