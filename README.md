@@ -1,4 +1,4 @@
-# wisc_lease
+# campus_subleases
 
 Student sublease platform (Next.js on Vercel, Supabase, Clerk).
 

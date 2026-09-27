@@ -38,3 +38,10 @@ PostGIS lives in the `extensions` schema (Supabase convention; on the default se
 
 UUID primary keys (except `users.id` = Clerk user ID); `created_at timestamptz default now()` on
 every table; money in integer cents; availability as `date`; locations as geography points.
+
+## Seed data
+
+Launch schools are inserted by a custom migration (`*_seed-schools.sql`, `ON CONFLICT DO NOTHING`),
+so every environment gets them. Adding a school = a new custom migration with one `INSERT`. School
+slugs share the top-level URL space and must not appear in `lib/reserved-slugs.ts`
+(`tests/services/schools.test.ts` checks every stored slug).
