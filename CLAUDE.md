@@ -58,7 +58,7 @@ pnpm test:e2e         # Playwright E2E
 
 # Quality
 pnpm lint             # Lint
-pnpm typecheck        # tsc --noEmit
+pnpm typecheck        # next typegen (route types) + tsc --noEmit
 ```
 
 ## Code Style
