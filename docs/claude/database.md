@@ -33,6 +33,10 @@ PostGIS lives in the `extensions` schema (Supabase convention; on the default se
   new tables), contract in a later PR.
 - drizzle-kit quotes custom column types (e.g. emits `"geography(Point, 4326)"` as a quoted
   identifier) in generated SQL; hand-fix the migration file to remove the quotes before applying.
+- Deploys: `.github/workflows/migrate.yml` applies migrations to staging when a PR touches
+  `server/db/migrations/**`, and to production on merge to `main`. Vercel deploys independently,
+  so new code can briefly run against the old schema (and vice versa); expand-then-contract keeps
+  that safe. See `environment.md`.
 
 ## Conventions
 

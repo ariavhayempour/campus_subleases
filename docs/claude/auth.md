@@ -23,6 +23,7 @@
   services enforce access.
 
 ## Clerk instance checklist (dev and production)
+
 Email + password sign-up with first and last name required; no usernames; email verification
 code required; bot protection on; session-token customization above; webhook endpoint
 `/api/webhooks/clerk` subscribed to `user.created`, `user.updated`, `user.deleted`
