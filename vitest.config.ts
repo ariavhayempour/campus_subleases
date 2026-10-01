@@ -11,6 +11,7 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     env: {
       DATABASE_URL: process.env.DATABASE_URL ?? LOCAL_DATABASE_URL,
+      CLERK_WEBHOOK_SIGNING_SECRET: 'whsec_dGVzdC13ZWJob29rLXNlY3JldC0zMi1ieXRlcy1sb25nIQ==',
     },
   },
 });

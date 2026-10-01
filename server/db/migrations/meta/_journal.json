@@ -22,6 +22,27 @@
       "when": 1790460888590,
       "tag": "0002_listings-messaging-moderation",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790472596265,
+      "tag": "0003_seed-schools",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790473668960,
+      "tag": "0004_drop-username",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790473669236,
+      "tag": "0005_user-names",
+      "breakpoints": true
     }
   ]
 }

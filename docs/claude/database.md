@@ -33,8 +33,27 @@ PostGIS lives in the `extensions` schema (Supabase convention; on the default se
   new tables), contract in a later PR.
 - drizzle-kit quotes custom column types (e.g. emits `"geography(Point, 4326)"` as a quoted
   identifier) in generated SQL; hand-fix the migration file to remove the quotes before applying.
+- Deploys: `.github/workflows/migrate.yml` applies migrations to staging when a PR touches
+  `server/db/migrations/**`, and to production on merge to `main`. Vercel deploys independently,
+  so new code can briefly run against the old schema (and vice versa); expand-then-contract keeps
+  that safe. See `environment.md`.
 
 ## Conventions
 
 UUID primary keys (except `users.id` = Clerk user ID); `created_at timestamptz default now()` on
 every table; money in integer cents; availability as `date`; locations as geography points.
+
+## Seed data
+
+Launch schools are inserted by a custom migration (`*_seed-schools.sql`, `ON CONFLICT DO NOTHING`),
+so every environment gets them. Adding a school = a new custom migration with one `INSERT`. School
+slugs share the top-level URL space and must not appear in `lib/reserved-slugs.ts`
+(`tests/services/schools.test.ts` checks every stored slug).
+
+## Users
+
+`users` mirrors Clerk by user ID. Accounts are email + password with first and last name; there
+are no usernames, and email lives only in Clerk. `first_name`/`last_name` are nullable (Clerk
+allows users without names, e.g. created from the dashboard). `display_name` is never edited
+directly: `syncUserFromClerk` and `ensureUser` derive it with `formatDisplayName`
+(`lib/display-name.ts`) as "First L." so the full last name is never shown to other users.

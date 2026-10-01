@@ -1,0 +1,44 @@
+name: Migrate
+
+on:
+  pull_request:
+    paths: ['server/db/migrations/**']
+  push:
+    branches: [main]
+    paths: ['server/db/migrations/**']
+
+concurrency:
+  group: migrate-${{ github.event_name == 'push' && 'production' || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+        env:
+          DATABASE_DIRECT_URL: ${{ secrets.STAGING_DATABASE_DIRECT_URL }}
+
+  production:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+        env:
+          DATABASE_DIRECT_URL: ${{ secrets.PRODUCTION_DATABASE_DIRECT_URL }}

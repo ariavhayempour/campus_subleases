@@ -10,7 +10,13 @@ export async function createUser(
   const id = nextId();
   const [row] = await db()
     .insert(users)
-    .values({ id: `user_test_${id}`, username: `tester_${id}`, ...overrides })
+    .values({
+      id: `user_test_${id}`,
+      firstName: 'Test',
+      lastName: `Tester${id}`,
+      displayName: 'Test T.',
+      ...overrides,
+    })
     .returning();
   return row;
 }

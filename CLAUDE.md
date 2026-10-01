@@ -24,7 +24,8 @@
   and responsive (usable down to phone width; admin is desktop-only)
 - Launches with UW–Madison, University of Michigan, and UCLA; new schools are data,
   not code
-- Product name not chosen: all user-facing copy reads it from the `APP_NAME` constant
+- Product name: Campus Subleases (campussubleases.com); all user-facing copy reads it from the
+  `APP_NAME` constant
 - Design spec: `docs/superpowers/specs/2026-09-24-sublease-platform-design.md`
 
 ## Architecture Rules
@@ -57,7 +58,7 @@ pnpm test:e2e         # Playwright E2E
 
 # Quality
 pnpm lint             # Lint
-pnpm typecheck        # tsc --noEmit
+pnpm typecheck        # next typegen (route types) + tsc --noEmit
 ```
 
 ## Code Style
