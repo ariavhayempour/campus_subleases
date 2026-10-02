@@ -21,7 +21,15 @@ export function SiteHeader() {
           </nav>
         </Show>
         <Show when="signed-in">
-          <UserButton />
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/listings/new" className="hover:underline">
+              Post a listing
+            </Link>
+            <Link href="/me/listings" className="hover:underline">
+              My listings
+            </Link>
+            <UserButton />
+          </nav>
         </Show>
       </div>
     </header>
