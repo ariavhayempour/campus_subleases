@@ -11,6 +11,7 @@ import { db } from '@/server/db/client';
 import { blocks, conversations, listingPhotos, listings, schools, users } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound } from './errors';
+import { isFavoritedBy } from './listing-cards';
 import { countsTowardCap, isExpired, isPublicListing } from './listing-sql';
 import { photoUrls } from './photos';
 
@@ -30,6 +31,7 @@ export type ListingDetail = Omit<
   distanceKm: number;
   photos: ListingPhotoView[];
   viewer: 'owner' | 'admin' | 'visitor';
+  isFavorited: boolean;
 };
 
 export type MyListing = {
@@ -102,6 +104,7 @@ async function hasConversation(listingId: string, renterId: string): Promise<boo
 
 export async function getListingDetail(actor: Actor, listingId: string): Promise<ListingDetail> {
   if (!isUuid(listingId)) throw notFound();
+  const viewerId = actor.kind === 'user' ? actor.userId : null;
   const [row] = await db()
     .select({
       listing: listings,
@@ -113,6 +116,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
       distanceKm: sql<number>`ST_Distance(${listings.location}, ${schools.campusLocation}) / 1000`,
       isPublic: sql<boolean>`${isPublicListing}`,
       isExpired,
+      isFavorited: isFavoritedBy(viewerId),
     })
     .from(listings)
     .innerJoin(schools, eq(schools.id, listings.schoolId))
@@ -121,7 +125,6 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
   if (!row) throw notFound();
 
   const { listing } = row;
-  const viewerId = actor.kind === 'user' ? actor.userId : null;
   const viewer =
     viewerId === listing.ownerId
       ? 'owner'
@@ -169,6 +172,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
     distanceKm: row.distanceKm,
     photos: await loadPhotos(listing.id),
     viewer,
+    isFavorited: row.isFavorited,
   };
 }
 
