@@ -22,6 +22,13 @@ test('an owner sees a pending listing; once approved it is public without the un
     const row = page.getByRole('listitem').filter({ hasText: TITLE });
     await expect(row.getByText('Pending review', { exact: true })).toBeVisible();
 
+    await page.goto(`/listings/${listingId}/edit`);
+    await expect(page.getByLabel('Which school is this near?')).toBeDisabled();
+    await expect(page.getByLabel('Type', { exact: true })).toBeDisabled();
+    await expect(
+      page.getByText('To change this, delete the listing and post a new one.'),
+    ).toHaveCount(2);
+
     await page.goto(listingUrl);
     await expect(page.getByRole('heading', { name: TITLE })).toBeVisible();
     await expect(page.getByText('123 State St, Unit 4B')).toBeVisible();

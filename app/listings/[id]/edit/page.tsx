@@ -39,6 +39,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
           defaultValues={edit.values}
           submitLabel="Save changes"
           submitAction={updateListingAction.bind(null, edit.id)}
+          lockSchoolAndType
         />
       </div>
     </main>

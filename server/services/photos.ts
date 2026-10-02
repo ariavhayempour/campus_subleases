@@ -27,6 +27,8 @@ const EXTENSIONS: Record<PhotoContentType, string> = {
 };
 const ACCEPTED_FORMATS = new Set(['jpeg', 'png', 'webp']);
 const HOUR_MS = 60 * 60 * 1000;
+// Guards against decompression bombs: a tiny file can declare an enormous canvas.
+export const MAX_PHOTO_PIXELS = 40_000_000;
 
 export const invalidPhoto = (message: string): ValidationError =>
   new ValidationError({ photos: [message] });
@@ -58,14 +60,15 @@ async function loadUpload(path: string): Promise<Buffer> {
     throw invalidPhoto('A photo upload is missing — add it again');
   }
   const buffer = await downloadObject(BUCKETS.uploads, path);
-  const format = await sharp(buffer)
+  // metadata() reads only the header; a pixel limit here would mislabel big photos as bad formats.
+  const metadata = await sharp(buffer, { limitInputPixels: false })
     .metadata()
-    .then(
-      (metadata) => metadata.format,
-      () => undefined,
-    );
-  if (!format || !ACCEPTED_FORMATS.has(format)) {
+    .catch(() => undefined);
+  if (!metadata?.format || !ACCEPTED_FORMATS.has(metadata.format)) {
     throw invalidPhoto('Use JPEG, PNG, or WebP photos');
+  }
+  if ((metadata.width ?? 0) * (metadata.height ?? 0) > MAX_PHOTO_PIXELS) {
+    throw invalidPhoto('Photos must be under 40 megapixels');
   }
   return buffer;
 }
@@ -73,7 +76,7 @@ async function loadUpload(path: string): Promise<Buffer> {
 // sharp drops all metadata (EXIF, GPS) unless asked to keep it; rotate() applies orientation first.
 async function writeDisplaySizes(listingId: string, source: Buffer): Promise<string> {
   const base = `${listingId}/${randomUUID()}`;
-  const oriented = sharp(source).rotate();
+  const oriented = sharp(source, { limitInputPixels: MAX_PHOTO_PIXELS }).rotate();
   const [thumb, gallery] = await Promise.all([
     oriented
       .clone()

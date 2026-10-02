@@ -10,6 +10,7 @@ import {
   ValidationError,
 } from '@/server/services/errors';
 import { createListing } from '@/server/services/listings';
+import { processListingUploads } from '@/server/services/photos';
 import { BUCKETS, objectExists, removeObjects } from '@/server/storage/client';
 import { withRollback } from '../helpers/db';
 import { actorFor, createSchool, createUser, insertListing } from '../helpers/fixtures';
@@ -21,9 +22,15 @@ vi.mock('@/server/storage/client', async (importOriginal) => {
   return { ...actual, removeObjects: vi.fn(actual.removeObjects) };
 });
 
+vi.mock('@/server/services/photos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/server/services/photos')>();
+  return { ...actual, processListingUploads: vi.fn(actual.processListingUploads) };
+});
+
 const users: string[] = [];
 const listingIds: string[] = [];
 afterEach(async () => {
+  vi.mocked(processListingUploads).mockClear();
   await cleanupStorage({ userIds: users.splice(0), listingIds: listingIds.splice(0) });
 });
 
@@ -31,6 +38,19 @@ async function owner(): Promise<string> {
   const user = await createUser();
   users.push(user.id);
   return user.id;
+}
+
+// Simulates other creates landing while this one processes its photos, past the pre-check.
+function raceFiveCreatesDuringProcessing(ownerId: string, schoolId: string): void {
+  vi.mocked(processListingUploads).mockImplementationOnce(async (...args) => {
+    for (let i = 0; i < 5; i += 1) {
+      await insertListing(ownerId, schoolId, { status: 'removed' });
+    }
+    const actual = await vi.importActual<typeof import('@/server/services/photos')>(
+      '@/server/services/photos',
+    );
+    return actual.processListingUploads(...args);
+  });
 }
 
 async function create(ownerId: string, input: unknown) {
@@ -187,7 +207,7 @@ describe('createListing', () => {
       ).resolves.toMatchObject({ schoolSlug: school.slug });
     }));
 
-  it('allows at most 5 new listings per rolling 24 hours', () =>
+  it('allows at most 5 new listings per rolling 24 hours, without processing photos', () =>
     withRollback(async () => {
       const ownerId = await owner();
       const school = await createSchool();
@@ -197,6 +217,21 @@ describe('createListing', () => {
       await expect(
         createListing(actorFor(ownerId), listingInput(school.id, [await uploadedPhoto(ownerId)])),
       ).rejects.toBeInstanceOf(RateLimited);
+      expect(processListingUploads).not.toHaveBeenCalled();
+    }));
+
+  it('re-checks the rate limit after processing, for a create that raced past the pre-check', () =>
+    withRollback(async () => {
+      const ownerId = await owner();
+      const school = await createSchool();
+      const photo = await uploadedPhoto(ownerId);
+      raceFiveCreatesDuringProcessing(ownerId, school.id);
+      await expect(
+        createListing(actorFor(ownerId), listingInput(school.id, [photo])),
+      ).rejects.toBeInstanceOf(RateLimited);
+      expect(processListingUploads).toHaveBeenCalledTimes(1);
+      if (photo.kind === 'upload')
+        expect(await objectExists(BUCKETS.uploads, photo.path)).toBe(true);
     }));
 
   it('still succeeds when deleting the consumed uploads fails', () =>
@@ -214,10 +249,8 @@ describe('createListing', () => {
     withRollback(async () => {
       const ownerId = await owner();
       const school = await createSchool();
-      for (let i = 0; i < 5; i += 1) {
-        await insertListing(ownerId, school.id, { status: 'removed' });
-      }
       const photo = await uploadedPhoto(ownerId);
+      raceFiveCreatesDuringProcessing(ownerId, school.id);
       vi.mocked(removeObjects).mockRejectedValueOnce(new Error('storage down'));
       await expect(
         createListing(actorFor(ownerId), listingInput(school.id, [photo])),

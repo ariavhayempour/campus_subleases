@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ANONYMOUS, type UserActor } from '@/server/services/actor';
 import { Forbidden, RateLimited, ValidationError } from '@/server/services/errors';
 import {
+  MAX_PHOTO_PIXELS,
   PHOTO_UPLOADS_PER_HOUR,
   photoUrls,
   processListingUploads,
@@ -144,5 +145,21 @@ describe('processListingUploads', () => {
       ]);
     }
     expect(await objectExists(BUCKETS.uploads, gifPath)).toBe(true);
+  });
+
+  it('rejects photos over the pixel limit', async () => {
+    const userId = newUser();
+    const huge = await sharp({
+      create: { width: 8000, height: 6000, channels: 3, background: '#808080' },
+    })
+      .png()
+      .toBuffer();
+    expect(8000 * 6000).toBeGreaterThan(MAX_PHOTO_PIXELS);
+    const path = await putUpload(userId, huge, 'png', 'image/png');
+    const listingId = newListingId();
+    const error = await processListingUploads(userId, listingId, [path]).catch((e: unknown) => e);
+    expect((error as ValidationError).fieldErrors.photos).toEqual([
+      'Photos must be under 40 megapixels',
+    ]);
   });
 });

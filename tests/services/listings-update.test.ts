@@ -1,10 +1,11 @@
 import { eq } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ListingInput, PhotoRef } from '@/lib/validation/listing';
 import { db } from '@/server/db/client';
 import { conversations, favorites, listingPhotos, listings } from '@/server/db/schema';
 import { Conflict, ListingCapReached, NotFound, ValidationError } from '@/server/services/errors';
 import { deleteListing, setListingStatus, updateListing } from '@/server/services/listings';
+import { processListingUploads } from '@/server/services/photos';
 import { withRollback } from '../helpers/db';
 import {
   actorFor,
@@ -17,11 +18,17 @@ import { uploadedPhoto } from '../helpers/listings';
 import { BUCKETS, objectExists, uploadObject } from '@/server/storage/client';
 import { cleanupStorage } from '../helpers/photos';
 
+vi.mock('@/server/services/photos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/server/services/photos')>();
+  return { ...actual, processListingUploads: vi.fn(actual.processListingUploads) };
+});
+
 type ListingRow = typeof listings.$inferSelect;
 
 const users: string[] = [];
 const listingIds: string[] = [];
 afterEach(async () => {
+  vi.mocked(processListingUploads).mockClear();
   await cleanupStorage({ userIds: users.splice(0), listingIds: listingIds.splice(0) });
 });
 
@@ -266,10 +273,43 @@ describe('updateListing', () => {
       });
       await insertListing(owner.id, school.id);
       await insertListing(owner.id, school.id, { reviewStatus: 'approved' });
+      const added = await uploadedPhoto(owner.id);
       await expect(
-        updateListing(actorFor(owner.id), listing.id, editInput(listing, existing)),
+        updateListing(actorFor(owner.id), listing.id, editInput(listing, [...existing, added])),
       ).rejects.toBeInstanceOf(ListingCapReached);
+      expect(processListingUploads).not.toHaveBeenCalled();
       expect((await reviewOf(listing.id)).reviewStatus).toBe('rejected');
+    }));
+
+  it('rejects a school change', () =>
+    withRollback(async () => {
+      const { owner, listing, existing } = await setup();
+      const otherSchool = await createSchool();
+      const error = await updateListing(
+        actorFor(owner.id),
+        listing.id,
+        editInput(listing, existing, { schoolId: otherSchool.id }),
+      ).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).fieldErrors).toEqual({
+        schoolId: ["This can't be changed — delete the listing and post a new one"],
+      });
+      expect((await reviewOf(listing.id)).schoolId).toBe(listing.schoolId);
+    }));
+
+  it('rejects a type change', () =>
+    withRollback(async () => {
+      const { owner, listing, existing } = await setup({ type: 'apartment' });
+      const error = await updateListing(
+        actorFor(owner.id),
+        listing.id,
+        editInput(listing, existing, { type: 'house' }),
+      ).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).fieldErrors).toEqual({
+        type: ["This can't be changed — delete the listing and post a new one"],
+      });
+      expect((await reviewOf(listing.id)).type).toBe('apartment');
     }));
 });
 

@@ -108,6 +108,19 @@ async function countTowardCap(executor: DbExecutor, ownerId: string): Promise<nu
   return row.n;
 }
 
+async function countRecentListings(executor: DbExecutor, ownerId: string): Promise<number> {
+  const [row] = await executor
+    .select({ n: count() })
+    .from(listings)
+    .where(
+      and(eq(listings.ownerId, ownerId), gt(listings.createdAt, sql`now() - interval '24 hours'`)),
+    );
+  return row.n;
+}
+
+const rateLimited = (): RateLimited =>
+  new RateLimited('You can post up to 5 listings a day — try again tomorrow');
+
 export async function createListing(
   actor: Actor,
   input: unknown,
@@ -125,27 +138,18 @@ export async function createListing(
 
   const school = await loadSchool(db(), data.schoolId);
   assertNotPast(data.availableTo, school.today);
+  // Cheap pre-checks so a doomed save never pays for photo processing; both re-run under the lock.
   if ((await countTowardCap(db(), user.userId)) >= MAX_ACTIVE_LISTINGS) {
     throw new ListingCapReached();
   }
+  if ((await countRecentListings(db(), user.userId)) >= LISTINGS_PER_DAY) throw rateLimited();
 
   const id = randomUUID();
   const basePaths = await processListingUploads(user.userId, id, uploadPaths);
   try {
     await db().transaction(async (tx) => {
       await lockOwner(tx, user.userId);
-      const [recent] = await tx
-        .select({ n: count() })
-        .from(listings)
-        .where(
-          and(
-            eq(listings.ownerId, user.userId),
-            gt(listings.createdAt, sql`now() - interval '24 hours'`),
-          ),
-        );
-      if (recent.n >= LISTINGS_PER_DAY) {
-        throw new RateLimited('You can post up to 5 listings a day — try again tomorrow');
-      }
+      if ((await countRecentListings(tx, user.userId)) >= LISTINGS_PER_DAY) throw rateLimited();
       await tx.insert(listings).values({ id, ownerId: user.userId, ...toColumns(data) });
       await tx
         .insert(listingPhotos)
@@ -165,6 +169,22 @@ export async function createListing(
 }
 
 type ListingRow = typeof listings.$inferSelect;
+
+const FIXED_FIELD_MESSAGE = "This can't be changed — delete the listing and post a new one";
+
+// Mirrors the countsTowardCap SQL predicate for a single row.
+function countsTowardCapNow(
+  status: ListingRow['status'],
+  reviewStatus: ReviewStatus,
+  availableTo: string,
+  today: string,
+): boolean {
+  return (
+    status === 'active' &&
+    (reviewStatus === 'pending' || reviewStatus === 'approved' || reviewStatus === 'hidden') &&
+    availableTo >= today
+  );
+}
 
 const photoKey = (photo: PhotoRef): string =>
   photo.kind === 'existing' ? photo.id : `upload:${photo.path}`;
@@ -218,6 +238,10 @@ export async function updateListing(
   const user = requireUser(actor);
   const current = await loadOwnedListing(user.userId, listingId);
   const data = parseInput(listingInputSchema, input);
+  const fixedFieldErrors: Record<string, string[]> = {};
+  if (data.schoolId !== current.schoolId) fixedFieldErrors.schoolId = [FIXED_FIELD_MESSAGE];
+  if (data.type !== current.type) fixedFieldErrors.type = [FIXED_FIELD_MESSAGE];
+  if (Object.keys(fixedFieldErrors).length > 0) throw new ValidationError(fixedFieldErrors);
 
   const currentPhotos = await db()
     .select()
@@ -234,10 +258,7 @@ export async function updateListing(
   }
 
   const school = await loadSchool(db(), data.schoolId);
-  // The school's timezone defines "today", so a school change re-checks the end date too.
-  if (data.availableTo !== current.availableTo || data.schoolId !== current.schoolId) {
-    assertNotPast(data.availableTo, school.today);
-  }
+  if (data.availableTo !== current.availableTo) assertNotPast(data.availableTo, school.today);
 
   const columns = toColumns(data);
   const changed = reviewedFieldsChanged(
@@ -256,6 +277,13 @@ export async function updateListing(
   );
   const reviewStatus = nextReviewStatus(current.reviewStatus, changed);
   const clearsNote = reviewStatus === 'pending' && current.reviewStatus !== 'pending';
+  if (
+    !countsTowardCapNow(current.status, current.reviewStatus, current.availableTo, school.today) &&
+    countsTowardCapNow(current.status, reviewStatus, data.availableTo, school.today) &&
+    (await countTowardCap(db(), user.userId)) >= MAX_ACTIVE_LISTINGS
+  ) {
+    throw new ListingCapReached();
+  }
 
   const uploadPaths = uploadPathsOf(data.photos);
   const newBases = await processListingUploads(user.userId, listingId, uploadPaths);

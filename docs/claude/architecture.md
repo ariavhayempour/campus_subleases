@@ -13,7 +13,7 @@ app/                 routes, UI, server actions, /api/webhooks/clerk, /api/cron/
 server/auth/         Clerk session → Actor (calls services only)
 server/services/     all business rules; the only importers of server/db
 server/db/           Drizzle schema, migrations, client
-server/storage/      Supabase Storage wrapper (later)
+server/storage/      Supabase Storage wrapper
 server/realtime/     Supabase Realtime wrapper (later)
 lib/validation/      Zod schemas shared by forms and services
 lib/                 framework-free helpers and constants (APP_NAME, reserved slugs, env)
@@ -29,4 +29,4 @@ components/ui/       shadcn/ui components (generated; edit freely)
 - UI is desktop-first and responsive; admin pages are desktop-only.
 - Dependencies are limited to the approved list in the design spec.
 
-See also: `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`.
+See also: `listings.md`, `storage.md`, `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`.

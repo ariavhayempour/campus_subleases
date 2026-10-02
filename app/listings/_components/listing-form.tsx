@@ -30,6 +30,8 @@ type ListingFormProps = {
   initialPhotos: InitialPhoto[];
   submitLabel: string;
   submitAction: (values: ListingInput) => Promise<ActionResult<void>>;
+  // School and type are fixed once a listing exists.
+  lockSchoolAndType?: boolean;
 };
 
 // Fields with a visible error slot; errors on any other field go to the form-level message.
@@ -52,7 +54,9 @@ const RENDERED_FIELDS = new Set([
   'privateBathroom',
   'photos',
 ]);
-const selectClass = 'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm';
+const selectClass =
+  'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60';
+const FIXED_FIELD_HINT = 'To change this, delete the listing and post a new one.';
 const textareaClass =
   'min-h-40 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm';
 
@@ -62,6 +66,7 @@ export function ListingForm({
   initialPhotos,
   submitLabel,
   submitAction,
+  lockSchoolAndType = false,
 }: ListingFormProps) {
   const [uploading, setUploading] = useState(false);
   // Address text last set by a suggestion; typing anything else invalidates the stored location.
@@ -130,19 +135,41 @@ export function ListingForm({
         <h2 className="text-lg font-medium">School</h2>
         <div className="space-y-2">
           <Label htmlFor="schoolId">Which school is this near?</Label>
-          <select
-            id="schoolId"
-            className={selectClass}
-            {...aria('schoolId')}
-            {...register('schoolId')}
-          >
-            <option value="">Choose a school</option>
-            {schools.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
-          </select>
+          {lockSchoolAndType ? (
+            <>
+              <select
+                id="schoolId"
+                className={selectClass}
+                disabled
+                value={schoolId}
+                aria-describedby="schoolId-hint"
+              >
+                {schools.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+              <input type="hidden" {...register('schoolId')} />
+              <p id="schoolId-hint" className="text-sm text-muted-foreground">
+                {FIXED_FIELD_HINT}
+              </p>
+            </>
+          ) : (
+            <select
+              id="schoolId"
+              className={selectClass}
+              {...aria('schoolId')}
+              {...register('schoolId')}
+            >
+              <option value="">Choose a school</option>
+              {schools.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          )}
           <FieldError id="schoolId-error" message={errors.schoolId?.message} />
         </div>
       </section>
@@ -203,13 +230,35 @@ export function ListingForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <select id="type" className={selectClass} {...register('type')}>
-              {LISTING_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {LISTING_TYPE_LABELS[value]}
-                </option>
-              ))}
-            </select>
+            {lockSchoolAndType ? (
+              <>
+                <select
+                  id="type"
+                  className={selectClass}
+                  disabled
+                  value={type}
+                  aria-describedby="type-hint"
+                >
+                  {LISTING_TYPES.map((value) => (
+                    <option key={value} value={value}>
+                      {LISTING_TYPE_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+                <input type="hidden" {...register('type')} />
+                <p id="type-hint" className="text-sm text-muted-foreground">
+                  {FIXED_FIELD_HINT}
+                </p>
+              </>
+            ) : (
+              <select id="type" className={selectClass} {...register('type')}>
+                {LISTING_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {LISTING_TYPE_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="rentDollars">Monthly rent ($)</Label>
