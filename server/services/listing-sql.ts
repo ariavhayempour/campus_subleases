@@ -1,5 +1,5 @@
 import { eq, inArray, sql, type SQL } from 'drizzle-orm';
-import { listings, schools, users } from '@/server/db/schema';
+import { blocks, listings, schools, users } from '@/server/db/schema';
 
 const all = (...conditions: SQL[]): SQL =>
   sql.join(
@@ -27,3 +27,10 @@ export const countsTowardCap: SQL = all(
   inArray(listings.reviewStatus, ['pending', 'approved', 'hidden']),
   sql`${listings.availableTo} >= ${schoolToday}`,
 );
+
+export const noBlockWith = (viewerId: string): SQL =>
+  sql`not exists (
+    select 1 from ${blocks}
+    where (${blocks.blockerId} = ${viewerId} and ${blocks.blockedId} = ${listings.ownerId})
+       or (${blocks.blockerId} = ${listings.ownerId} and ${blocks.blockedId} = ${viewerId})
+  )`;
