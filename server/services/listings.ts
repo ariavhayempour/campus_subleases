@@ -1,13 +1,31 @@
 import { randomUUID } from 'node:crypto';
 import * as Sentry from '@sentry/nextjs';
-import { and, count, eq, gt, sql } from 'drizzle-orm';
-import { MAX_ACTIVE_LISTINGS } from '@/lib/listing-options';
-import { isSharedSpace } from '@/lib/listing-rules';
-import { listingInputSchema, type ListingData, type PhotoRef } from '@/lib/validation/listing';
+import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
+import { MAX_ACTIVE_LISTINGS, type ReviewStatus } from '@/lib/listing-options';
+import {
+  isSharedSpace,
+  nextReviewStatus,
+  reviewedFieldsChanged,
+  type ReviewedFields,
+} from '@/lib/listing-rules';
+import {
+  isUuid,
+  listingInputSchema,
+  listingStatusInputSchema,
+  type ListingData,
+  type PhotoRef,
+} from '@/lib/validation/listing';
 import { db, type DbExecutor } from '@/server/db/client';
 import { listingPhotos, listings, schools } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
-import { ListingCapReached, parseInput, RateLimited, ValidationError } from './errors';
+import {
+  Conflict,
+  ListingCapReached,
+  NotFound,
+  parseInput,
+  RateLimited,
+  ValidationError,
+} from './errors';
 import { countsTowardCap, schoolToday } from './listing-sql';
 import {
   deleteProcessedPhotos,
@@ -100,6 +118,10 @@ export async function createListing(
   if (uploadPaths.length !== data.photos.length) {
     throw invalidPhoto('A photo upload is invalid — remove it and try again');
   }
+  const existingIds = data.photos.flatMap((photo) => (photo.kind === 'existing' ? [photo.id] : []));
+  if (new Set(existingIds).size !== existingIds.length) {
+    throw invalidPhoto('A photo upload is invalid — remove it and try again');
+  }
 
   const school = await loadSchool(db(), data.schoolId);
   assertNotPast(data.availableTo, school.today);
@@ -140,4 +162,192 @@ export async function createListing(
   }
   await bestEffort(() => deleteUploads(uploadPaths));
   return { id, schoolSlug: school.slug };
+}
+
+type ListingRow = typeof listings.$inferSelect;
+
+const photoKey = (photo: PhotoRef): string =>
+  photo.kind === 'existing' ? photo.id : `upload:${photo.path}`;
+
+type ReviewedColumns = Pick<
+  ListingRow,
+  | 'title'
+  | 'description'
+  | 'rentCents'
+  | 'genderPreference'
+  | 'address'
+  | 'city'
+  | 'state'
+  | 'zip'
+  | 'unit'
+  | 'location'
+>;
+
+function reviewedFields(row: ReviewedColumns, photoKeys: string[]): ReviewedFields {
+  return {
+    title: row.title,
+    description: row.description,
+    rentCents: row.rentCents,
+    genderPreference: row.genderPreference,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    zip: row.zip,
+    // Forms send a blank unit as '' while the column stores null.
+    unit: row.unit || null,
+    location: row.location,
+    photoKeys,
+  };
+}
+
+async function loadOwnedListing(ownerId: string, listingId: string): Promise<ListingRow> {
+  if (!isUuid(listingId)) throw new NotFound('Listing not found');
+  const [row] = await db()
+    .select()
+    .from(listings)
+    .where(and(eq(listings.id, listingId), eq(listings.ownerId, ownerId)));
+  if (!row) throw new NotFound('Listing not found');
+  return row;
+}
+
+export async function updateListing(
+  actor: Actor,
+  listingId: string,
+  input: unknown,
+): Promise<{ id: string; schoolSlug: string; reviewStatus: ReviewStatus }> {
+  const user = requireUser(actor);
+  const current = await loadOwnedListing(user.userId, listingId);
+  const data = parseInput(listingInputSchema, input);
+
+  const currentPhotos = await db()
+    .select()
+    .from(listingPhotos)
+    .where(eq(listingPhotos.listingId, listingId))
+    .orderBy(asc(listingPhotos.position));
+  const pathById = new Map(currentPhotos.map((photo) => [photo.id, photo.storagePath]));
+  if (data.photos.some((photo) => photo.kind === 'existing' && !pathById.has(photo.id))) {
+    throw invalidPhoto('A photo upload is invalid — remove it and try again');
+  }
+  const existingIds = data.photos.flatMap((photo) => (photo.kind === 'existing' ? [photo.id] : []));
+  if (new Set(existingIds).size !== existingIds.length) {
+    throw invalidPhoto('A photo upload is invalid — remove it and try again');
+  }
+
+  const school = await loadSchool(db(), data.schoolId);
+  // The school's timezone defines "today", so a school change re-checks the end date too.
+  if (data.availableTo !== current.availableTo || data.schoolId !== current.schoolId) {
+    assertNotPast(data.availableTo, school.today);
+  }
+
+  const columns = toColumns(data);
+  const changed = reviewedFieldsChanged(
+    reviewedFields(
+      current,
+      currentPhotos.map((photo) => photo.id),
+    ),
+    reviewedFields(
+      {
+        ...columns,
+        genderPreference: columns.genderPreference ?? 'any',
+        unit: columns.unit ?? null,
+      },
+      data.photos.map(photoKey),
+    ),
+  );
+  const reviewStatus = nextReviewStatus(current.reviewStatus, changed);
+  const clearsNote = reviewStatus === 'pending' && current.reviewStatus !== 'pending';
+
+  const uploadPaths = uploadPathsOf(data.photos);
+  const newBases = await processListingUploads(user.userId, listingId, uploadPaths);
+  const orderedPaths: string[] = [];
+  let nextUpload = 0;
+  for (const photo of data.photos) {
+    const path = photo.kind === 'existing' ? pathById.get(photo.id) : newBases[nextUpload++];
+    if (!path) throw invalidPhoto('A photo upload is invalid — remove it and try again');
+    orderedPaths.push(path);
+  }
+  const keptIds = new Set(existingIds);
+  const removedPaths = currentPhotos
+    .filter((photo) => !keptIds.has(photo.id))
+    .map((photo) => photo.storagePath);
+
+  try {
+    await db().transaction(async (tx) => {
+      await lockOwner(tx, user.userId);
+      // Re-read under a row lock so an admin action or another edit since the first read is not overwritten.
+      const [locked] = await tx
+        .select({ reviewStatus: listings.reviewStatus })
+        .from(listings)
+        .where(eq(listings.id, listingId))
+        .for('update');
+      const lockedPhotoIds = (
+        await tx
+          .select({ id: listingPhotos.id })
+          .from(listingPhotos)
+          .where(eq(listingPhotos.listingId, listingId))
+      ).map((photo) => photo.id);
+      if (
+        !locked ||
+        locked.reviewStatus !== current.reviewStatus ||
+        lockedPhotoIds.length !== currentPhotos.length ||
+        lockedPhotoIds.some((id) => !pathById.has(id))
+      ) {
+        throw new Conflict();
+      }
+      await tx
+        .update(listings)
+        .set({ ...columns, reviewStatus, ...(clearsNote ? { reviewNote: null } : {}) })
+        .where(eq(listings.id, listingId));
+      await tx.delete(listingPhotos).where(eq(listingPhotos.listingId, listingId));
+      await tx
+        .insert(listingPhotos)
+        .values(
+          orderedPaths.map((storagePath, position) => ({ listingId, storagePath, position })),
+        );
+      if ((await countTowardCap(tx, user.userId)) > MAX_ACTIVE_LISTINGS) {
+        throw new ListingCapReached();
+      }
+    });
+  } catch (error) {
+    await bestEffort(() => deleteProcessedPhotos(newBases));
+    throw error;
+  }
+  await bestEffort(() => deleteProcessedPhotos(removedPaths));
+  await bestEffort(() => deleteUploads(uploadPaths));
+  return { id: listingId, schoolSlug: school.slug, reviewStatus };
+}
+
+export async function setListingStatus(actor: Actor, input: unknown): Promise<void> {
+  const user = requireUser(actor);
+  const { listingId, status } = parseInput(listingStatusInputSchema, input);
+  await db().transaction(async (tx) => {
+    await lockOwner(tx, user.userId);
+    const [row] = await tx
+      .select({ status: listings.status })
+      .from(listings)
+      .where(and(eq(listings.id, listingId), eq(listings.ownerId, user.userId)));
+    if (!row) throw new NotFound('Listing not found');
+    if (row.status === status) return;
+    await tx
+      .update(listings)
+      .set({ status, takenAt: status === 'taken' ? new Date() : null })
+      .where(eq(listings.id, listingId));
+    if ((await countTowardCap(tx, user.userId)) > MAX_ACTIVE_LISTINGS) {
+      throw new ListingCapReached();
+    }
+  });
+}
+
+export async function deleteListing(actor: Actor, listingId: string): Promise<void> {
+  const user = requireUser(actor);
+  await loadOwnedListing(user.userId, listingId);
+  const photoPaths = await db().transaction(async (tx) => {
+    const photos = await tx
+      .select({ storagePath: listingPhotos.storagePath })
+      .from(listingPhotos)
+      .where(eq(listingPhotos.listingId, listingId));
+    await tx.delete(listings).where(eq(listings.id, listingId));
+    return photos.map((photo) => photo.storagePath);
+  });
+  await bestEffort(() => deleteProcessedPhotos(photoPaths));
 }
