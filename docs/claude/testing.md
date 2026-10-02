@@ -11,6 +11,17 @@
 - Webhooks: `signedClerkWebhook(payload)` signs a request with the test secret configured in
   `vitest.config.ts`; call the route's `POST` directly.
 
+## Storage
+
+- Buckets (`uploads`, `listing-photos`) are declared in `supabase/config.toml` and seeded by
+  `pnpm db:start` (`supabase seed buckets --local`); `supabase start` alone does not create them.
+- Troubleshooting: storage uploads fail with a 500 and Postgres 42P10 ("no unique or exclusion
+  constraint matching the ON CONFLICT specification"). The storage schema on a long-lived local
+  volume has likely drifted from the storage-api image. Local-only workaround (run as
+  `supabase_admin`):
+  `create unique index idx_objects_current_version_c on storage.objects (bucket_id, name collate "C") where archived_at is null`.
+  Clean alternative that wipes local data: `supabase stop --no-backup && pnpm db:start`.
+
 ## E2E (Playwright)
 
 - `pnpm test:e2e` starts `pnpm dev` locally (`pnpm start` in CI, after `pnpm build`).
