@@ -1,5 +1,6 @@
 import { db } from '@/server/db/client';
-import { listings, schools, users } from '@/server/db/schema';
+import { listingPhotos, listings, schools, users } from '@/server/db/schema';
+import type { UserActor } from '@/server/services/actor';
 
 let sequence = 0;
 const nextId = (): string => `${Date.now().toString(36)}${(sequence += 1)}`;
@@ -65,4 +66,34 @@ export function listingValues(
     furnished: true,
     ...overrides,
   };
+}
+
+export const actorFor = (userId: string, isAdmin = false): UserActor => ({
+  kind: 'user',
+  userId,
+  isAdmin,
+});
+
+export async function insertListing(
+  ownerId: string,
+  schoolId: string,
+  overrides: Partial<typeof listings.$inferInsert> = {},
+): Promise<typeof listings.$inferSelect> {
+  const [row] = await db()
+    .insert(listings)
+    .values(listingValues(ownerId, schoolId, overrides))
+    .returning();
+  return row;
+}
+
+export async function insertPhoto(
+  listingId: string,
+  position: number,
+  storagePath = `${listingId}/fixture-${position}`,
+): Promise<typeof listingPhotos.$inferSelect> {
+  const [row] = await db()
+    .insert(listingPhotos)
+    .values({ listingId, position, storagePath })
+    .returning();
+  return row;
 }

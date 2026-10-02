@@ -28,7 +28,7 @@ const EXTENSIONS: Record<PhotoContentType, string> = {
 const ACCEPTED_FORMATS = new Set(['jpeg', 'png', 'webp']);
 const HOUR_MS = 60 * 60 * 1000;
 
-const invalidPhoto = (message: string): ValidationError =>
+export const invalidPhoto = (message: string): ValidationError =>
   new ValidationError({ photos: [message] });
 
 export async function requestPhotoUploads(
