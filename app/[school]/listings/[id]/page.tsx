@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { FavoriteButton } from '@/app/_components/favorite-button';
 import { ListingBadge } from '@/app/_components/listing-badge';
 import { orNotFound } from '@/app/_lib/guards';
 import { formatDateRange, formatDistanceKm, formatMonthYear, formatRent } from '@/lib/format';
@@ -37,6 +38,7 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
 export default async function ListingPage({ params }: ListingPageProps) {
   const { school, id } = await params;
   const listing = await loadListing(id);
+  const actor = await getActor();
   if (listing.school.slug !== school) redirect(`/${listing.school.slug}/listings/${listing.id}`);
 
   const facts = [
@@ -139,6 +141,14 @@ export default async function ListingPage({ params }: ListingPageProps) {
           <p className="text-sm text-muted-foreground">
             Hosted by {listing.host.displayName} · joined {formatMonthYear(listing.host.joinedAt)}
           </p>
+          {listing.viewer === 'visitor' && (
+            <FavoriteButton
+              listingId={listing.id}
+              initialFavorited={listing.isFavorited}
+              signedIn={actor.kind === 'user'}
+              withText
+            />
+          )}
         </aside>
       </div>
     </main>
