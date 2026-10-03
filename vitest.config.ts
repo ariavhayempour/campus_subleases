@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import { LOCAL_DATABASE_URL } from './tests/local-db.ts';
+import { localSupabaseEnv } from './tests/local-supabase.ts';
 
 export default defineConfig({
   resolve: { alias: { '@': path.resolve(import.meta.dirname) } },
@@ -9,9 +10,11 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     globalSetup: ['tests/global-setup.ts'],
     setupFiles: ['tests/setup.ts'],
+    testTimeout: 20_000,
     env: {
       DATABASE_URL: process.env.DATABASE_URL ?? LOCAL_DATABASE_URL,
       CLERK_WEBHOOK_SIGNING_SECRET: 'whsec_dGVzdC13ZWJob29rLXNlY3JldC0zMi1ieXRlcy1sb25nIQ==',
+      ...localSupabaseEnv(),
     },
   },
 });

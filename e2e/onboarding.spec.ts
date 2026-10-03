@@ -1,18 +1,12 @@
-import { clerk } from '@clerk/testing/playwright';
 import { expect, test } from '@playwright/test';
 import { resetUserById } from './helpers/reset-user';
-
-const email = process.env.E2E_CLERK_USER_EMAIL ?? '';
+import { signInTestUser, testUserEmail } from './helpers/sign-in';
 
 test('a new user is sent to onboarding, then to their home school', async ({ page }) => {
-  test.skip(!email && !process.env.CI, 'E2E Clerk test user not configured');
-  expect(email, 'E2E_CLERK_USER_EMAIL must be set in CI').not.toBe('');
+  test.skip(!testUserEmail && !process.env.CI, 'E2E Clerk test user not configured');
+  expect(testUserEmail, 'E2E_CLERK_USER_EMAIL must be set in CI').not.toBe('');
 
-  await page.goto('/sign-in');
-  // Email code (fixed for +clerk_test addresses) avoids Client Trust's new-device check on password sign-in.
-  await clerk.signIn({ page, signInParams: { strategy: 'email_code', identifier: email } });
-  const userId = await page.evaluate(() => window.Clerk?.user?.id ?? '');
-  expect(userId).not.toBe('');
+  const userId = await signInTestUser(page);
   await resetUserById(userId);
 
   await page.goto('/');

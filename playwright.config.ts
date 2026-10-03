@@ -12,7 +12,7 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   globalSetup: './e2e/global-setup.ts',
-  use: { baseURL: 'http://localhost:3000', trace: 'on-first-retry' },
+  use: { baseURL: 'http://localhost:3000', trace: 'retain-on-failure' },
   projects: [{ name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: process.env.CI ? 'pnpm start' : 'pnpm dev',
