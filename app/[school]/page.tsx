@@ -9,7 +9,7 @@ import {
 } from '@/lib/validation/search';
 import { getActor } from '@/server/auth/get-actor';
 import { getActiveSchoolBySlug } from '@/server/services/schools';
-import { searchListings } from '@/server/services/search';
+import { searchListings, searchMapPins } from '@/server/services/search';
 import { BrowseFilters } from './_components/browse-filters';
 import { BrowseView } from './_components/browse-view';
 
@@ -31,7 +31,10 @@ export default async function SchoolPage({ params, searchParams }: SchoolPagePro
   ]);
   const filters = parseSearchParams(raw);
   const query = toSearchParams(filters).toString();
-  const results = await searchListings(actor, { schoolId: school.id, filters });
+  const [results, pins] = await Promise.all([
+    searchListings(actor, { schoolId: school.id, filters }),
+    searchMapPins(actor, { schoolId: school.id, filters }),
+  ]);
 
   const empty = hasActiveFilters(filters) ? (
     <div className="rounded-xl border p-8 text-center">
@@ -68,6 +71,7 @@ export default async function SchoolPage({ params, searchParams }: SchoolPagePro
         filters={filters}
         query={query}
         results={results}
+        pins={pins}
         signedIn={actor.kind === 'user'}
         empty={empty}
       />
