@@ -79,4 +79,5 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 ## Pages
 
 `/listings/new`, `/listings/[id]/edit` (owner), `/me/listings` (owner; `?notice=` banners),
-`/[school]/listings/[id]` (public when public; `noindex`; Open Graph without the unit).
+`/[school]/listings/[id]` (public when public; `noindex`; Open Graph without the unit), `/[school]` (browse; see `search.md`),
+`/me/favorites` (signed in, onboarded; `noindex`).

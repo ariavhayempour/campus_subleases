@@ -45,5 +45,10 @@
   and delete the `users` mirror row; lazy creation rebuilds it.
 - Listing tests seed rows directly via SQL (`e2e/helpers/listings.ts`), so E2E needs no Mapbox
   token; the create form itself is verified manually.
+- Browse/favorites specs seed approved listings owned by a database-only host
+  (`user_e2e_browse_host`, `e2e/helpers/browse.ts`) so the Clerk test user can save them;
+  deleting the host cascades its listings and favorites. Seeded text includes "Zebracorn" and
+  tests scope to `?q=zebracorn`, so other local data never affects assertions.
+- CI has no Mapbox token, so E2E never asserts on the map.
 - Playwright keeps traces on failure (`trace: 'retain-on-failure'`); CI retries once.
 - Default project is desktop Chrome (the site is desktop-first).
