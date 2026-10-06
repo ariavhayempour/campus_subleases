@@ -14,16 +14,32 @@
   rent below the min drops the max; a move-out before the move-in drops the move-out. Services
   validate strictly with `searchFiltersSchema`.
 - Filters apply on "Apply filters"; the sort applies on change. "Best match" (relevance) is
-  offered and is the default only when `q` is set. An explicitly chosen sort is kept; an
-  untouched one follows the default, so adding a keyword switches it to "Best match".
+  offered and is the default only when `q` is set. A chosen sort that is not the default is kept;
+  an untouched one (or one equal to the default) follows the default, so adding a keyword switches
+  it to "Best match".
+- The filter form is uncontrolled and remounts (`key={query}`) on every new search, which is how
+  "Clear filters" and Back/Forward show the fields for the URL. To keep keyboard focus across
+  that remount, the form remembers the `id` of the focused control when it navigates and focuses
+  the same control after mounting.
 - **Load more** calls `loadMoreListingsAction` with the canonical query string and an offset. It
-  is not in the URL, so a reload shows the first page. Offsets use a stable tiebreak
-  (`created_at desc, id`); the client skips cards it already shows.
+  is not in the URL. Offsets use a stable tiebreak (`created_at desc, id`); the client skips
+  cards it already shows. A rejected action (network failure) shows the same inline error as a
+  failed result.
+- **Restoring loaded cards** (`browse-results.tsx`): after each "Load more" the card count and
+  list height are saved in `sessionStorage` under `browse-loaded:<schoolId>:<query>`. When the
+  results mount with a remembered count above the first page (Back from a listing, or a reload),
+  they fetch the missing pages through the same action, stopping at the remembered count, at the
+  end of the results, or on a failed or empty page, then save the count actually shown. The
+  remembered height is reserved as a `min-height` before the fetch so the browser's own scroll
+  restoration on Back lands at the old position; no scroll code is involved. On a reload the
+  cards come back but the scroll position may not. Blocked storage means no restore.
 - **Map** (`browse-map-view.tsx`): Mapbox GeoJSON source clustering; pins for all matching
   results (not only loaded cards); hovering a card highlights its pin unless the pin is inside a
   cluster; clicking a pin opens a popup for every listing at that point: a mini-card (cover,
   rent, title) for one, or "N listings here" with rent and title links for several. Panning never
-  re-queries; "Search this area" writes `bbox` (rounded to 5 decimals). The map stays mounted
+  re-queries; "Search this area" writes `bbox` (clamped to valid longitudes/latitudes, since a
+  map zoomed out past one world reports longitudes beyond ±180, then rounded to 5 decimals). A
+  popup whose listings are all filtered out is closed for good. The map stays mounted
   across filter changes, so filter changes do not count as new Mapbox map loads. Without
   `NEXT_PUBLIC_MAPBOX_TOKEN` (CI) the pane shows "Map unavailable".
 - Below 768px a "Show map / Show list" toggle switches panes.
@@ -54,14 +70,19 @@ ST_MakeEnvelope(…, 4326)`.
   works. Both directions are idempotent.
 - `/me/favorites` lists only listings currently visible to the viewer, most recently saved
   first. A saved listing that stops being public drops out and returns if it becomes public
-  again; the `favorites` row is kept.
+  again; the `favorites` row is kept. The page shows at most the 200 most recently saved
+  listings and has no paging.
 - `FavoriteButton` is icon-only on listing tiles (accessible name "Save listing", with
   `aria-pressed`) and shows text on the listing detail page (name "Save"/"Saved"). Signed out, it
   is Clerk's `SignInButton` (redirect mode), which returns to the current page after sign-in.
+  A failed or rejected save rolls the heart back and shows a visible `role="alert"` message
+  (a small bubble under the heart on tiles, a line under the button on the detail page).
 
 ## Decisions that can look like bugs
 
 - Two "Clear filters" links can appear when filters match nothing (bar + empty state).
 - Pins are capped at 500 (newest first); the list count can exceed the pins shown.
-- "Load more" state is lost on reload by design.
+- "Load more" progress is remembered per search for the browser session, so returning to a
+  search already paged through (Back, reload, or applying the same filters again) shows the
+  extra cards again after a moment.
 - Several listings in one building share one pin; clicking it lists them all.

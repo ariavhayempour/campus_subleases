@@ -18,7 +18,7 @@ import MapGL, {
 import { Button } from '@/components/ui/button';
 import { formatRent } from '@/lib/format';
 import type { LngLat } from '@/lib/validation/listing';
-import { roundBounds, type Bounds } from '@/lib/validation/search';
+import { clampBounds, roundBounds, type Bounds } from '@/lib/validation/search';
 import type { MapPin } from '@/server/services/search';
 
 export type BrowseMapViewProps = {
@@ -82,6 +82,8 @@ export default function BrowseMapView({
   const selected = selection
     ? selection.ids.flatMap((id) => pins.find((pin) => pin.id === id) ?? [])
     : [];
+  // A selection whose listings were all filtered out must not reopen when they return.
+  if (selection && selected.length === 0) setSelection(null);
 
   function handleClick(event: MapMouseEvent) {
     const feature = event.features?.[0];
@@ -126,12 +128,14 @@ export default function BrowseMapView({
     setMoved(false);
     setSelection(null);
     onSearchArea(
-      roundBounds({
-        west: visible.getWest(),
-        south: visible.getSouth(),
-        east: visible.getEast(),
-        north: visible.getNorth(),
-      }),
+      roundBounds(
+        clampBounds({
+          west: visible.getWest(),
+          south: visible.getSouth(),
+          east: visible.getEast(),
+          north: visible.getNorth(),
+        }),
+      ),
     );
   }
 

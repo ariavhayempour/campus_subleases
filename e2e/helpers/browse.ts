@@ -3,7 +3,14 @@ import { LOCAL_DATABASE_URL } from '../../tests/local-db';
 
 const HOST_ID = 'user_e2e_browse_host';
 
-export type SeedListing = { title: string; rentCents: number; unit?: string };
+export type SeedListing = {
+  title: string;
+  rentCents: number;
+  unit?: string;
+  description?: string;
+};
+
+const DESCRIPTION = 'Zebracorn test listing with big windows near campus.';
 
 function connect(): postgres.Sql {
   return postgres(process.env.DATABASE_URL ?? LOCAL_DATABASE_URL, { max: 1, prepare: false });
@@ -27,7 +34,7 @@ export async function seedBrowseListings(listings: SeedListing[]): Promise<strin
         )
         values (
           (select id from schools where slug = 'uw-madison'), ${HOST_ID}, 'apartment',
-          ${listing.title}, 'Zebracorn test listing with big windows near campus.',
+          ${listing.title}, ${listing.description ?? DESCRIPTION},
           ${listing.rentCents}, current_date + 30, current_date + 150, 1, 1, 0,
           '200 Lake St', 'Madison', 'WI', '53703', ${listing.unit ?? null},
           'SRID=4326;POINT(-89.40 43.07)'::geography, 'approved', now(),

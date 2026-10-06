@@ -49,6 +49,11 @@
   (`user_e2e_browse_host`, `e2e/helpers/browse.ts`) so the Clerk test user can save them;
   deleting the host cascades its listings and favorites. Seeded text includes "Zebracorn" and
   tests scope to `?q=zebracorn`, so other local data never affects assertions.
+- `seedBrowseListings` takes an optional `description`; a listing seeded without "Zebracorn" in
+  its title or description proves a keyword filter is carried (e.g. by "Load more").
+- `signInThroughForm()` fills Clerk's `<SignIn />` form on the current page (email, "Use another
+  method", email code `424242`), for tests that must prove Clerk's return redirect. It depends on
+  Clerk's button labels; `setupClerkTestingToken({ page })` must run first.
 - CI has no Mapbox token, so E2E never asserts on the map.
 - Playwright keeps traces on failure (`trace: 'retain-on-failure'`); CI retries once.
 - Default project is desktop Chrome (the site is desktop-first).

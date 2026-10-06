@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { FormEvent } from 'react';
+import { useEffect, useRef, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,8 +36,22 @@ const GENDER_OPTIONS = ['women', 'men', 'nonbinary_friendly'] as const;
 
 type BrowseFiltersProps = { schoolSlug: string; filters: SearchFilters };
 
+// The form remounts for each new search; this carries the focused control's id to that search.
+let focusAfterNavigation: { id: string; query: string } | null = null;
+
 export function BrowseFilters({ schoolSlug, filters }: BrowseFiltersProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const currentQuery = toSearchParams(filters).toString();
+
+  useEffect(() => {
+    const pending = focusAfterNavigation;
+    focusAfterNavigation = null;
+    if (pending?.query !== currentQuery) return;
+    const control = document.getElementById(pending.id);
+    if (control && formRef.current?.contains(control)) control.focus({ preventScroll: true });
+  }, [currentQuery]);
+
   const sorts = SORTS.filter((sort) => sort !== 'relevance' || filters.q);
   const showDetails = Object.keys(filters).some((key) => !['q', 'sort', 'bounds'].includes(key));
 
@@ -49,6 +63,11 @@ export function BrowseFilters({ schoolSlug, filters }: BrowseFiltersProps) {
     // An untouched sort is dropped so the default follows the new keyword.
     if (!filters.sort && params.get('sort') === effectiveSort(filters)) params.delete('sort');
     const query = toSearchParams(parseSearchParams(searchParamsToRecord(params))).toString();
+    const focused = document.activeElement;
+    focusAfterNavigation =
+      query !== currentQuery && focused?.id && form.contains(focused)
+        ? { id: focused.id, query }
+        : null;
     router.push(query ? `/${schoolSlug}?${query}` : `/${schoolSlug}`);
   }
 
@@ -58,7 +77,13 @@ export function BrowseFilters({ schoolSlug, filters }: BrowseFiltersProps) {
   }
 
   return (
-    <form role="search" aria-label="Filter listings" onSubmit={onSubmit} className="space-y-3">
+    <form
+      ref={formRef}
+      role="search"
+      aria-label="Filter listings"
+      onSubmit={onSubmit}
+      className="space-y-3"
+    >
       {filters.bounds && <input type="hidden" name="bbox" value={formatBounds(filters.bounds)} />}
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1 space-y-1">
@@ -87,7 +112,9 @@ export function BrowseFilters({ schoolSlug, filters }: BrowseFiltersProps) {
             ))}
           </select>
         </div>
-        <Button type="submit">Apply filters</Button>
+        <Button id="apply-filters" type="submit">
+          Apply filters
+        </Button>
         {hasActiveFilters(filters) && (
           <Link href={`/${schoolSlug}`} className="text-sm underline">
             Clear filters

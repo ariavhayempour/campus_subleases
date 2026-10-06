@@ -1,7 +1,8 @@
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
 import { expect, test } from '@playwright/test';
 import { removeBrowseHost, seedBrowseListings } from './helpers/browse';
 import { prepareHost } from './helpers/listings';
-import { signInTestUser, testUserEmail } from './helpers/sign-in';
+import { signInTestUser, signInThroughForm, testUserEmail } from './helpers/sign-in';
 
 const SCOPE = '/uw-madison?q=zebracorn';
 
@@ -46,19 +47,54 @@ test('signed-out visitors are sent to sign in when saving', async ({ page }) => 
   await expect(page).toHaveURL(/\/sign-in/);
 });
 
-test('"Load more" appends the next page', async ({ page }) => {
-  await seedBrowseListings(
-    Array.from({ length: 25 }, (_, i) => ({
-      title: `Zebracorn studio ${i + 1}`,
-      rentCents: 80_000 + i * 100,
-    })),
-  );
+test('signing in from a save returns to the filtered browse page', async ({ page }) => {
+  test.skip(!testUserEmail && !process.env.CI, 'E2E Clerk test user not configured');
+  expect(testUserEmail, 'E2E_CLERK_USER_EMAIL must be set in CI').not.toBe('');
+
+  await seedBrowseListings([{ title: 'Zebracorn cozy studio', rentCents: 90_000 }]);
+  await setupClerkTestingToken({ page });
+  await page.goto(SCOPE);
+  await page.getByRole('article').getByRole('button', { name: 'Save listing' }).click();
+  await expect(page).toHaveURL(/\/sign-in/);
+  await signInThroughForm(page);
+  await expect(page).toHaveURL(SCOPE);
+  await expect(page.getByRole('searchbox', { name: 'Keyword' })).toHaveValue('zebracorn');
+  await expect(page.getByRole('article')).toHaveCount(1);
+});
+
+const studios = Array.from({ length: 25 }, (_, i) => ({
+  title: `Zebracorn studio ${i + 1}`,
+  rentCents: 80_000 + i * 100,
+}));
+
+test('"Load more" appends the next page of the same search', async ({ page }) => {
+  // Seeded last, so it is the oldest row: an unfiltered second page would include it.
+  await seedBrowseListings([
+    ...studios,
+    { title: 'Plain attic room', rentCents: 70_000, description: 'Quiet room with a skylight.' },
+  ]);
   await page.goto(SCOPE);
   await expect(page.getByText('25 listings', { exact: true })).toBeVisible();
   await expect(page.getByRole('article')).toHaveCount(24);
   await page.getByRole('button', { name: 'Load more' }).click();
   await expect(page.getByRole('article')).toHaveCount(25);
+  await expect(page.getByRole('article').last().getByRole('heading', { level: 3 })).toHaveText(
+    'Zebracorn studio 25',
+  );
+  await expect(page.getByText('Plain attic room')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Load more' })).toHaveCount(0);
+});
+
+test('going back from a listing restores the loaded cards', async ({ page }) => {
+  await seedBrowseListings(studios);
+  await page.goto(SCOPE);
+  await page.getByRole('button', { name: 'Load more' }).click();
+  await expect(page.getByRole('article')).toHaveCount(25);
+  await page.getByRole('link', { name: /Zebracorn studio 25/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Zebracorn studio 25' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(SCOPE);
+  await expect(page.getByRole('article')).toHaveCount(25);
 });
 
 test('a signed-in student saves a listing and unsaves it from Saved', async ({ page }) => {
