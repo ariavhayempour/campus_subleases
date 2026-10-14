@@ -43,6 +43,13 @@
       "when": 1790473669236,
       "tag": "0005_user-names",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792006161494,
+      "tag": "0006_realtime-user-channel-policy",
+      "breakpoints": true
     }
   ]
 }
