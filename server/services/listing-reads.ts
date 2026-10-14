@@ -33,6 +33,7 @@ export type ListingDetail = Omit<
   photos: ListingPhotoView[];
   viewer: 'owner' | 'admin' | 'visitor';
   isFavorited: boolean;
+  conversationId: string | null; // the viewer's conversation on this listing as renter
 };
 
 export type MyListing = {
@@ -80,13 +81,16 @@ async function loadPhotos(listingId: string): Promise<ListingPhotoView[]> {
   });
 }
 
-async function hasConversation(listingId: string, renterId: string): Promise<boolean> {
-  const rows = await db()
+async function findRenterConversationId(
+  listingId: string,
+  renterId: string,
+): Promise<string | null> {
+  const [row] = await db()
     .select({ id: conversations.id })
     .from(conversations)
     .where(and(eq(conversations.listingId, listingId), eq(conversations.renterId, renterId)))
     .limit(1);
-  return rows.length > 0;
+  return row?.id ?? null;
 }
 
 export async function getListingDetail(actor: Actor, listingId: string): Promise<ListingDetail> {
@@ -125,8 +129,8 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
       if (state.viewerBlocked || state.blockedByOther) throw notFound();
     }
   }
-  const showUnit =
-    viewer !== 'visitor' || (viewerId !== null && (await hasConversation(listing.id, viewerId)));
+  const conversationId = viewerId ? await findRenterConversationId(listing.id, viewerId) : null;
+  const showUnit = viewer !== 'visitor' || conversationId !== null;
 
   return {
     id: listing.id,
@@ -163,6 +167,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
     photos: await loadPhotos(listing.id),
     viewer,
     isFavorited: row.isFavorited,
+    conversationId,
   };
 }
 
