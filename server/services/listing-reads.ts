@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
 import {
   isAmenity,
   MAX_ACTIVE_LISTINGS,
@@ -8,11 +8,12 @@ import {
 } from '@/lib/listing-options';
 import { isUuid, type ListingInput, type LngLat } from '@/lib/validation/listing';
 import { db } from '@/server/db/client';
-import { blocks, conversations, listingPhotos, listings, schools, users } from '@/server/db/schema';
+import { conversations, listingPhotos, listings, schools, users } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound } from './errors';
 import { isFavoritedBy } from './listing-cards';
 import { countsTowardCap, isExpired, isPublicListing } from './listing-sql';
+import { getBlockState } from './moderation';
 import { photoUrls } from './photos';
 
 type ListingRow = typeof listings.$inferSelect;
@@ -79,20 +80,6 @@ async function loadPhotos(listingId: string): Promise<ListingPhotoView[]> {
   });
 }
 
-async function blockedBetween(a: string, b: string): Promise<boolean> {
-  const rows = await db()
-    .select({ blockerId: blocks.blockerId })
-    .from(blocks)
-    .where(
-      or(
-        and(eq(blocks.blockerId, a), eq(blocks.blockedId, b)),
-        and(eq(blocks.blockerId, b), eq(blocks.blockedId, a)),
-      ),
-    )
-    .limit(1);
-  return rows.length > 0;
-}
-
 async function hasConversation(listingId: string, renterId: string): Promise<boolean> {
   const rows = await db()
     .select({ id: conversations.id })
@@ -133,7 +120,10 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
         : 'visitor';
   if (viewer === 'visitor') {
     if (!row.isPublic) throw notFound();
-    if (viewerId && (await blockedBetween(viewerId, listing.ownerId))) throw notFound();
+    if (viewerId) {
+      const state = await getBlockState(viewerId, listing.ownerId);
+      if (state.viewerBlocked || state.blockedByOther) throw notFound();
+    }
   }
   const showUnit =
     viewer !== 'visitor' || (viewerId !== null && (await hasConversation(listing.id, viewerId)));
