@@ -25,6 +25,9 @@ export function SiteHeader() {
             <Link href="/listings/new" className="hover:underline">
               Post a listing
             </Link>
+            <Link href="/messages" className="hover:underline">
+              Messages
+            </Link>
             <Link href="/me/favorites" className="hover:underline">
               Saved
             </Link>

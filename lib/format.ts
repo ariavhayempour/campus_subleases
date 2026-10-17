@@ -37,3 +37,30 @@ export function formatDistanceKm(km: number): string {
 export function formatMonthYear(date: Date): string {
   return monthYear.format(date);
 }
+
+const timeOnly = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+const dayTime = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+const dayTimeYear = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+// Local time zone; newer ICU emits a narrow no-break space before AM/PM.
+export function formatMessageTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const sameDay = date.toDateString() === now.toDateString();
+  const formatter = sameDay
+    ? timeOnly
+    : date.getFullYear() === now.getFullYear()
+      ? dayTime
+      : dayTimeYear;
+  return formatter.format(date).replace(/ /g, ' ');
+}

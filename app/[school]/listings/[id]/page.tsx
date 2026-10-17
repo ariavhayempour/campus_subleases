@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { FavoriteButton } from '@/app/_components/favorite-button';
 import { ListingBadge } from '@/app/_components/listing-badge';
+import { MessageHostButton } from '@/app/_components/message-host-button';
 import { orNotFound } from '@/app/_lib/guards';
 import { formatDateRange, formatDistanceKm, formatMonthYear, formatRent } from '@/lib/format';
 import {
@@ -141,6 +142,13 @@ export default async function ListingPage({ params }: ListingPageProps) {
           <p className="text-sm text-muted-foreground">
             Hosted by {listing.host.displayName} · joined {formatMonthYear(listing.host.joinedAt)}
           </p>
+          {listing.viewer === 'visitor' && (
+            <MessageHostButton
+              listingId={listing.id}
+              conversationId={listing.conversationId}
+              signedIn={actor.kind === 'user'}
+            />
+          )}
           {listing.viewer === 'visitor' && (
             <FavoriteButton
               listingId={listing.id}
