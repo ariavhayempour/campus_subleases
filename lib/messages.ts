@@ -12,3 +12,8 @@ export function mergeMessages(current: MessageView[], incoming: MessageView[]): 
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
 }
+
+export function withUnreadPrefix(title: string, unread: number): string {
+  const base = title.replace(/^\(\d+\) /, '');
+  return unread > 0 ? `(${unread}) ${base}` : base;
+}

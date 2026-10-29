@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSelectedLayoutSegment } from 'next/navigation';
+import { useRouter, useSelectedLayoutSegment } from 'next/navigation';
+import { useEffect } from 'react';
+import { useMessaging } from '@/app/_components/messaging-provider';
 import { formatMessageTime } from '@/lib/format';
 import { DELETED_USER_LABEL, REMOVED_LISTING_LABEL } from '@/lib/messaging-options';
 import { cn } from '@/lib/utils';
@@ -10,6 +12,18 @@ import type { InboxRow } from '@/server/services/messaging-reads';
 
 export function InboxList({ items }: { items: InboxRow[] }) {
   const openId = useSelectedLayoutSegment();
+  const router = useRouter();
+  const { onEvent, onResync } = useMessaging();
+
+  useEffect(() => {
+    const refresh = () => router.refresh();
+    const offEvent = onEvent(refresh);
+    const offResync = onResync(refresh);
+    return () => {
+      offEvent();
+      offResync();
+    };
+  }, [onEvent, onResync, router]);
   if (items.length === 0) {
     return (
       <p className="p-4 text-sm text-muted-foreground">

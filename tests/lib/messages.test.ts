@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatMessageTime } from '@/lib/format';
-import { mergeMessages } from '@/lib/messages';
+import { mergeMessages, withUnreadPrefix } from '@/lib/messages';
 import type { MessageView } from '@/lib/messaging-options';
 
 const m = (id: string, createdAt: string): MessageView => ({
@@ -34,6 +34,20 @@ describe('formatMessageTime', () => {
     );
     expect(formatMessageTime(new Date(2025, 11, 31, 9, 0).toISOString(), now)).toBe(
       'Dec 31, 2025, 9:00 AM',
+    );
+  });
+});
+
+describe('withUnreadPrefix', () => {
+  it('adds, replaces, and removes the unread prefix', () => {
+    expect(withUnreadPrefix('Messages · Campus Subleases', 3)).toBe(
+      '(3) Messages · Campus Subleases',
+    );
+    expect(withUnreadPrefix('(3) Messages · Campus Subleases', 1)).toBe(
+      '(1) Messages · Campus Subleases',
+    );
+    expect(withUnreadPrefix('(1) Messages · Campus Subleases', 0)).toBe(
+      'Messages · Campus Subleases',
     );
   });
 });

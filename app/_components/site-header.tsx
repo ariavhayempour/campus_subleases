@@ -1,5 +1,6 @@
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import { MessagesNavLink } from '@/app/_components/messages-nav-link';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/lib/app-config';
 
@@ -25,9 +26,7 @@ export function SiteHeader() {
             <Link href="/listings/new" className="hover:underline">
               Post a listing
             </Link>
-            <Link href="/messages" className="hover:underline">
-              Messages
-            </Link>
+            <MessagesNavLink />
             <Link href="/me/favorites" className="hover:underline">
               Saved
             </Link>
