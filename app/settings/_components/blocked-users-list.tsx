@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { LocalTime } from '@/app/_components/local-time';
 import { Button } from '@/components/ui/button';
-import { formatDate } from '@/lib/format';
 import { unblockFromSettingsAction } from '../actions';
 
 export type BlockedUserRow = { id: string; displayName: string; blockedAt: string };
@@ -33,7 +33,9 @@ export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
           <li key={user.id} className="flex items-center justify-between gap-3 p-3 text-sm">
             <div>
               <p className="font-medium">{user.displayName}</p>
-              <p className="text-xs text-muted-foreground">Blocked {formatDate(user.blockedAt)}</p>
+              <p className="text-xs text-muted-foreground">
+                Blocked <LocalTime iso={user.blockedAt} dateOnly />
+              </p>
             </div>
             <Button
               type="button"

@@ -27,7 +27,7 @@ export default async function SettingsPage() {
           users={blocked.map((row) => ({
             id: row.id,
             displayName: row.displayName,
-            blockedAt: row.blockedAt.toISOString().slice(0, 10),
+            blockedAt: row.blockedAt.toISOString(),
           }))}
         />
       </section>
