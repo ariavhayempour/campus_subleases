@@ -94,3 +94,7 @@ Vercel's Git integration deploys a preview per pull request and production from 
 Actions run lint, format check, typecheck, service tests, build, and E2E on every PR, and apply
 database migrations to staging (PRs) and production (merges to `main`). Migrations must stay
 backward-compatible with the previous deploy: expand first, contract in a later PR.
+
+## License
+
+Source available for portfolio review. All rights reserved; see [LICENSE](LICENSE).
