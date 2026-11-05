@@ -91,6 +91,9 @@ never told they were blocked: they see the generic `cannot_reply` text.
   previews the last message (whitespace collapsed, 120 characters, "You: " prefix for your own).
 - Mark-read, send, start, and block actions call `revalidatePath('/messages', 'layout')` so the
   inbox reflects them.
+- **Times render in the viewer's zone:** `LocalTime` (`app/_components/local-time.tsx`) renders a
+  non-breaking space on the server and during hydration, then formats with `formatMessageTime`
+  after mount. The placeholder keeps the line height and avoids a hydration mismatch.
 
 ## Realtime
 
@@ -121,8 +124,9 @@ Live delivery is a convenience on top of the database, which is the source of tr
 - **What an event does:** the provider refetches the unread count; an open thread merges the
   message (deduplicated by id) and, if the viewport was at the bottom, follows it; the inbox calls
   `router.refresh()`.
-- **Recovery:** on every re-subscribe after the first, and on window `focus` or
-  `visibilitychange` to visible (coalesced to one per second), the provider refetches the unread
+- **Recovery:** on every `SUBSCRIBED` (the first join included, so events committed before the
+  join are caught) and on window `focus` or `visibilitychange` to visible (only these two are
+  coalesced to one per second), the provider refetches the unread
   count, the open thread calls `router.refresh()` and merges the server window (seen messages are
   never dropped), and the inbox refreshes. A message missed while offline therefore appears on
   return.
@@ -194,5 +198,5 @@ Live delivery is a convenience on top of the database, which is the source of tr
 
 - **Dead listing link in a blocked thread.** The thread header links to the listing when it is
   public or the viewer owns it, without checking for a block. The listing page is a 404 for a
-  visitor when either side has blocked the other, so whoever is in a blocked conversation (not
-  only the blocked renter) sees a header link that 404s. No data leaks. Pending a fix.
+  visitor when either side has blocked the other, so only the renter (whichever side placed the
+  block) sees a header link that 404s; the host owns the listing, so their link works. No data leaks. Pending a fix.

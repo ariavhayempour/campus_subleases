@@ -7,6 +7,7 @@ import { resetMessaging } from './helpers/messaging';
 import { secondUserEmail, signInTestUser, testUserEmail } from './helpers/sign-in';
 
 const RENTER_MESSAGE = '<b>bold?</b> Is this still available?';
+const ZONE = 'Asia/Kolkata';
 const HOST_REPLY = 'Yes — want to see it Saturday?';
 
 let hostId = '';
@@ -53,7 +54,8 @@ test('a renter messages a host, they reply live, and the host blocks the renter'
   expect(secondUserEmail, 'E2E_CLERK_USER2_EMAIL must be set in CI').not.toBe('');
 
   const hostContext = await browser.newContext();
-  const renterContext = await browser.newContext();
+  // A zone far from the server's proves times are formatted in the viewer's zone after a hard load.
+  const renterContext = await browser.newContext({ timezoneId: ZONE });
   contexts = [hostContext, renterContext];
   const hostPage = await hostContext.newPage();
   const renterPage = await renterContext.newPage();
@@ -115,6 +117,22 @@ test('a renter messages a host, they reply live, and the host blocks the renter'
   await expect(renterLog).toContainText(RENTER_MESSAGE);
   await expect(renterLog).toContainText(HOST_REPLY);
   await expect(renterPage.getByRole('textbox', { name: 'Message' })).toHaveCount(0);
+  await expect
+    .poll(() =>
+      renterLog.locator('time').evaluateAll((nodes, zone) => {
+        const clock = new Intl.DateTimeFormat('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: zone,
+        });
+        return nodes.every((node) => {
+          const text = (node.textContent ?? '').replace(/\s/g, ' ');
+          const iso = node.getAttribute('datetime') ?? '';
+          return text.includes(clock.format(new Date(iso)).replace(/\s/g, ' '));
+        });
+      }, ZONE),
+    )
+    .toBe(true);
 
   await hostPage.getByRole('button', { name: 'Unblock' }).click();
   await expect(hostPage.getByRole('textbox', { name: 'Message' })).toBeVisible();

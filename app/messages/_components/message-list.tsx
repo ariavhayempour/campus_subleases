@@ -1,4 +1,4 @@
-import { formatMessageTime } from '@/lib/format';
+import { LocalTime } from '@/app/_components/local-time';
 import { DELETED_USER_LABEL, type MessageView } from '@/lib/messaging-options';
 import { cn } from '@/lib/utils';
 
@@ -22,13 +22,7 @@ export function MessageList({ messages, viewerId }: MessageListProps) {
             >
               {message.body}
             </div>
-            <time
-              dateTime={message.createdAt}
-              suppressHydrationWarning
-              className="mt-0.5 text-xs text-muted-foreground"
-            >
-              {formatMessageTime(message.createdAt)}
-            </time>
+            <LocalTime iso={message.createdAt} className="mt-0.5 text-xs text-muted-foreground" />
           </li>
         );
       })}

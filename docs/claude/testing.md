@@ -23,8 +23,10 @@
   reads the URL, publishable key, and JWT secret from `supabase status`, refuses non-local hosts,
   and signs a short-lived HS256 token locally (claims `sub`, `role: authenticated`) with
   `node:crypto`, standing in for a Clerk token. They cover delivery to the owner of a channel,
-  refusal to join another user's channel, publishing with no subscriber, and the unreachable-host
-  error. A client must call `realtime.setAuth()` before joining a private channel.
+  refusal to join another user's channel, no delivery to public (anonymous or other-user) subscriptions of a user channel, publishing with no subscriber, and the unreachable-host
+  error. A client must call `realtime.setAuth()` before joining a private channel. `joinChannel`
+  waits through transient `CHANNEL_ERROR`s until `SUBSCRIBED` (rejects on `CLOSED`, `TIMED_OUT`, or a
+  10 s deadline); tests expecting refusal pass `{ expect: 'refused' }`.
 - **Policy test:** `tests/db/realtime-policy.test.ts` (see `database.md`).
 
 ## Storage

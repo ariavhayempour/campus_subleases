@@ -3,7 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userTopic, type RealtimeEvent } from '@/lib/messaging-options';
 import { publishToUser } from '@/server/realtime/publish';
-import { joinChannel, localRealtimeClient, nextBroadcast } from '../helpers/realtime';
+import {
+  anonRealtimeClient,
+  joinChannel,
+  localRealtimeClient,
+  nextBroadcast,
+} from '../helpers/realtime';
 
 const event = (conversationId: string): RealtimeEvent => ({
   type: 'message',
@@ -44,8 +49,25 @@ describe('publishToUser', () => {
   });
 
   it("refuses to let a user join another user's channel", async () => {
-    const { status } = await joinChannel(clientFor(alice), userTopic(bob));
+    const { status } = await joinChannel(clientFor(alice), userTopic(bob), {
+      expect: 'refused',
+    });
     expect(status).toBe('CHANNEL_ERROR');
+  });
+
+  it('does not deliver to public subscriptions of a user channel, only to the private owner', async () => {
+    const anon = anonRealtimeClient();
+    clients.push(anon);
+    const publicAnon = await joinChannel(anon, userTopic(alice), { private: false });
+    const publicBob = await joinChannel(clientFor(bob), userTopic(alice), { private: false });
+    const owner = await joinChannel(clientFor(alice), userTopic(alice));
+    const sent = event(randomUUID());
+    await publishToUser(alice, sent);
+    expect(await nextBroadcast(owner.channel)).toEqual(sent);
+    const quiet = Symbol('quiet');
+    const wait = () => new Promise((resolve) => setTimeout(() => resolve(quiet), 1500));
+    expect(await Promise.race([nextBroadcast(publicAnon.channel), wait()])).toBe(quiet);
+    expect(await Promise.race([nextBroadcast(publicBob.channel), wait()])).toBe(quiet);
   });
 
   it('resolves when nobody is subscribed', async () => {

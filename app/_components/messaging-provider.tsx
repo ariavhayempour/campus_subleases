@@ -69,18 +69,21 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     void Promise.resolve().then(refreshUnread);
-    let lastResync = 0;
     const resync = () => {
-      // focus and visibilitychange fire together on tab return; run one resync.
-      if (Date.now() - lastResync < 1000) return;
-      lastResync = Date.now();
       void refreshUnread();
       emitResync();
     };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') resync();
+    let lastFocusResync = 0;
+    const onFocus = () => {
+      // focus and visibilitychange fire together on tab return; run one resync.
+      if (Date.now() - lastFocusResync < 1000) return;
+      lastFocusResync = Date.now();
+      resync();
     };
-    window.addEventListener('focus', resync);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') onFocus();
+    };
+    window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
     const unsubscribe = subscribeToUserChannel({
       userId,
@@ -89,12 +92,11 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
         emitEvent(event);
         void refreshUnread();
       },
-      onSubscribed: (isReconnect) => {
-        if (isReconnect) resync();
-      },
+      // Every join, the first included, catches up on events missed before it completed.
+      onSubscribed: resync,
     });
     return () => {
-      window.removeEventListener('focus', resync);
+      window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
       unsubscribe?.();
     };

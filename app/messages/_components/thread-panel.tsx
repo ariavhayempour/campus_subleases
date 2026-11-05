@@ -32,7 +32,6 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
   const stick = useRef<'bottom' | number | null>('bottom');
   const shown = useRef(messages);
   const pinned = useRef(true);
-  const unreadPending = useRef(false);
 
   // Synced at commit so a render-time server merge is visible before any event can land.
   useLayoutEffect(() => {
@@ -59,7 +58,6 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
   }, []);
 
   const markRead = useCallback(() => {
-    unreadPending.current = false;
     void markReadAction(thread.id)
       .then(refreshUnread)
       .catch(() => undefined);
@@ -88,7 +86,6 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
       addMessages([event.message], null);
       if (event.message.senderId === thread.viewerId) return;
       if (document.visibilityState === 'visible') markRead();
-      else unreadPending.current = true;
     });
     const offResync = onResync(() => {
       router.refresh();

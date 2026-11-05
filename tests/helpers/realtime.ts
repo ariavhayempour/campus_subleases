@@ -45,23 +45,51 @@ export function localRealtimeClient(userId: string): SupabaseClient {
 
 const broadcasts = new WeakMap<RealtimeChannel, Promise<unknown>>();
 
+type JoinOptions = {
+  // 'subscribed' rides out transient CHANNEL_ERRORs (the client rejoins); 'refused' settles on the first one.
+  expect?: 'subscribed' | 'refused';
+  private?: boolean;
+  timeoutMs?: number;
+};
+
+export function anonRealtimeClient(): SupabaseClient {
+  const { API_URL, PUBLISHABLE_KEY } = localStatus();
+  return createClient(API_URL, PUBLISHABLE_KEY, { auth: { persistSession: false } });
+}
+
 export async function joinChannel(
   client: SupabaseClient,
   topic: string,
+  options: JoinOptions = {},
 ): Promise<{ status: string; channel: RealtimeChannel }> {
+  const { expect = 'subscribed', private: isPrivate = true, timeoutMs = 10_000 } = options;
   // Push the user token to the socket before joining; otherwise the join carries the publishable key.
-  await client.realtime.setAuth();
-  const channel = client.channel(topic, { config: { private: true } });
+  if (isPrivate) await client.realtime.setAuth();
+  const channel = client.channel(topic, { config: { private: isPrivate } });
   broadcasts.set(
     channel,
     new Promise((resolve) => {
       channel.on('broadcast', { event: REALTIME_EVENT_NAME }, ({ payload }) => resolve(payload));
     }),
   );
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    let lastError = 'none';
+    const timer = setTimeout(() => {
+      reject(
+        new Error(`Join of ${topic} did not settle in ${timeoutMs}ms (last error: ${lastError})`),
+      );
+    }, timeoutMs);
+    const done = (fn: () => void) => {
+      clearTimeout(timer);
+      fn();
+    };
     channel.subscribe((state) => {
-      if (state === 'SUBSCRIBED' || state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
-        resolve({ status: state, channel });
+      if (state === 'SUBSCRIBED') done(() => resolve({ status: state, channel }));
+      else if (state === 'CHANNEL_ERROR') {
+        lastError = state;
+        if (expect === 'refused') done(() => resolve({ status: state, channel }));
+      } else if (state === 'CLOSED' || state === 'TIMED_OUT') {
+        done(() => reject(new Error(`Join of ${topic} ended with ${state}`)));
       }
     });
   });

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSelectedLayoutSegment } from 'next/navigation';
 import { useEffect } from 'react';
 import { useMessaging } from '@/app/_components/messaging-provider';
-import { formatMessageTime } from '@/lib/format';
+import { LocalTime } from '@/app/_components/local-time';
 import { DELETED_USER_LABEL, REMOVED_LISTING_LABEL } from '@/lib/messaging-options';
 import { cn } from '@/lib/utils';
 import type { InboxRow } from '@/server/services/messaging-reads';
@@ -60,13 +60,10 @@ export function InboxList({ items }: { items: InboxRow[] }) {
                   <span className={cn('truncate', item.unread ? 'font-semibold' : 'font-medium')}>
                     {item.listing?.title ?? REMOVED_LISTING_LABEL}
                   </span>
-                  <time
-                    dateTime={item.lastMessageAt}
-                    suppressHydrationWarning
+                  <LocalTime
+                    iso={item.lastMessageAt}
                     className="shrink-0 text-xs text-muted-foreground"
-                  >
-                    {formatMessageTime(item.lastMessageAt)}
-                  </time>
+                  />
                 </div>
                 <p className="truncate text-muted-foreground">
                   {item.otherUser?.displayName ?? DELETED_USER_LABEL}
