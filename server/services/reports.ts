@@ -97,9 +97,12 @@ export async function createReport(
     if (!created) throw new Conflict(REPORT_DUPLICATE);
     if (targetType !== 'listing') return { id: created.id, autoHidden: false };
 
-    // Row lock serializes concurrent reports so exactly one sees the threshold crossed.
+    // Row lock: exactly one concurrent report crosses the threshold. Text keeps microseconds.
     const [listing] = await tx
-      .select({ reviewStatus: listings.reviewStatus })
+      .select({
+        reviewStatus: listings.reviewStatus,
+        countSince: sql<string>`coalesce(${listings.reviewedAt}, ${listings.createdAt})::text`,
+      })
       .from(listings)
       .where(eq(listings.id, targetId))
       .for('update');
@@ -108,12 +111,11 @@ export async function createReport(
     const [{ reporters }] = await tx
       .select({ reporters: countDistinct(reports.reporterId) })
       .from(reports)
-      .innerJoin(listings, eq(listings.id, sql`${reports.targetId}::uuid`))
       .where(
         and(
           eq(reports.targetType, 'listing'),
           eq(reports.targetId, targetId),
-          gt(reports.createdAt, sql`coalesce(${listings.reviewedAt}, ${listings.createdAt})`),
+          gt(reports.createdAt, sql`${listing.countSince}::timestamptz`),
         ),
       );
     if (reporters < AUTO_HIDE_REPORTERS) return { id: created.id, autoHidden: false };

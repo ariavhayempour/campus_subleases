@@ -52,12 +52,30 @@ export const adminDeleteListingSchema = z.object({
   confirm: z.literal(CONFIRM_WORD, { error: `Type ${CONFIRM_WORD} to confirm` }),
 });
 
-export const banSchema = z.object({
-  userId: z
+const clerkUserId = z
+  .string()
+  .max(100)
+  .regex(/^user_[A-Za-z0-9_]+$/, 'Invalid user');
+
+export const banSchema = z.object({ userId: clerkUserId });
+
+export type ConversationFrom = { kind: 'report'; id: string } | { kind: 'user'; id: string };
+
+// The admin page that linked to a conversation, from `?from=report:{id}` or `?from=user:{id}`.
+export const conversationFromSchema: z.ZodType<ConversationFrom, unknown> = z.union([
+  z
     .string()
-    .max(100)
-    .regex(/^user_[A-Za-z0-9_]+$/),
-});
+    .startsWith('report:')
+    .transform((value) => value.slice('report:'.length))
+    .pipe(z.uuid())
+    .transform((id) => ({ kind: 'report' as const, id })),
+  z
+    .string()
+    .startsWith('user:')
+    .transform((value) => value.slice('user:'.length))
+    .pipe(clerkUserId)
+    .transform((id) => ({ kind: 'user' as const, id })),
+]);
 
 export const reportsQuerySchema = z.object({
   status: z.enum(['open', 'resolved', 'all']).default('open'),

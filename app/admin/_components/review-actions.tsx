@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import type { ActionResult } from '@/app/_lib/action-result';
 import { Button } from '@/components/ui/button';
@@ -31,7 +30,6 @@ export function ReviewActions({
   reviewStatus,
   autoHidden,
 }: ReviewActionsProps) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<Failure | null>(null);
   const [note, setNote] = useState('');
@@ -40,12 +38,8 @@ export function ReviewActions({
   function run(action: () => Promise<ActionResult<void>>) {
     startTransition(async () => {
       const result = await action();
-      if (result.ok) {
-        setFailure(null);
-        router.refresh();
-      } else {
-        setFailure(result.error);
-      }
+      // The action's revalidatePath re-renders this page with the new review state.
+      setFailure(result.ok ? null : result.error);
     });
   }
 
