@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import * as Sentry from '@sentry/nextjs';
 import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
 import { MAX_ACTIVE_LISTINGS, type ReviewStatus } from '@/lib/listing-options';
 import {
@@ -18,6 +17,7 @@ import {
 import { db, type DbExecutor } from '@/server/db/client';
 import { listingPhotos, listings, schools } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
+import { bestEffort } from './best-effort';
 import {
   Conflict,
   ListingCapReached,
@@ -60,15 +60,6 @@ function toColumns(data: ListingData): Omit<typeof listings.$inferInsert, 'owner
     furnished: data.furnished,
     amenities: [...new Set(data.amenities)],
   };
-}
-
-// Storage cleanup must never mask the real outcome; leftovers are swept by a later job.
-async function bestEffort(cleanup: () => Promise<void>): Promise<void> {
-  try {
-    await cleanup();
-  } catch (error) {
-    Sentry.captureException(error);
-  }
 }
 
 // Upload refs only; callers compare lengths to detect non-upload refs.
@@ -366,16 +357,19 @@ export async function setListingStatus(actor: Actor, input: unknown): Promise<vo
   });
 }
 
+// Deletes the row (photos and favorites cascade) and returns the photo base paths to clean up.
+export async function deleteListingRow(tx: DbExecutor, listingId: string): Promise<string[]> {
+  const photos = await tx
+    .select({ storagePath: listingPhotos.storagePath })
+    .from(listingPhotos)
+    .where(eq(listingPhotos.listingId, listingId));
+  await tx.delete(listings).where(eq(listings.id, listingId));
+  return photos.map((photo) => photo.storagePath);
+}
+
 export async function deleteListing(actor: Actor, listingId: string): Promise<void> {
   const user = requireUser(actor);
   await loadOwnedListing(user.userId, listingId);
-  const photoPaths = await db().transaction(async (tx) => {
-    const photos = await tx
-      .select({ storagePath: listingPhotos.storagePath })
-      .from(listingPhotos)
-      .where(eq(listingPhotos.listingId, listingId));
-    await tx.delete(listings).where(eq(listings.id, listingId));
-    return photos.map((photo) => photo.storagePath);
-  });
+  const photoPaths = await db().transaction((tx) => deleteListingRow(tx, listingId));
   await bestEffort(() => deleteProcessedPhotos(photoPaths));
 }

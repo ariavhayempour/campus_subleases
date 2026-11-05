@@ -2,8 +2,9 @@
 
 ## Lifecycle
 
-- New listings start `review_status = pending`; only admins approve (plan 5). Locally,
-  `pnpm dev:approve-listing <id>` approves a listing in the local database only.
+- New listings start `review_status = pending`; admins approve, reject, hide, and unhide
+  them at `/admin/listings` (see `admin.md`). Locally, `pnpm dev:approve-listing <id>` still approves
+  a listing in the local database only, without an audit row.
 - Owner status: `active` → `taken` (sets `taken_at`) or `removed`; either can be reactivated.
   An `active` listing whose `available_to` is before today (school timezone) is **expired**.
 - Reactivation does not re-check dates: a past-dated listing that is reactivated just stays
@@ -59,7 +60,11 @@
 ## Unit privacy
 
 `getListingDetail` returns `unit` only to the owner, admins, and a renter with a conversation on
-that listing. It is never in Open Graph tags, cards, or `/me/listings`.
+that listing (it sets `conversationId`, the viewer's conversation as renter, which also drives the
+button below). The unit also shows in the thread header to both participants. It is never in Open
+Graph tags, cards, `/me/listings`, the inbox, or Realtime payloads (see `messaging.md`).
+
+A visitor who blocked the owner, or was blocked by them, gets a 404 for the listing.
 
 ## Distance
 
@@ -70,7 +75,6 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 ## Decisions that can look like bugs
 
 - `NEXT_PUBLIC_SUPABASE_URL` is also used server-side for Storage (`server/storage/client.ts`).
-- Deleting a user leaves their photo files until the plan-6 cleanup cron.
 - Listing E2E seeds rows via SQL; the create form is verified manually.
 - Locally, address search uses the Mapbox default public token, which has no URL restriction
   (creating a restricted token needs a card on the account). Production should get a
@@ -79,4 +83,10 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 ## Pages
 
 `/listings/new`, `/listings/[id]/edit` (owner), `/me/listings` (owner; `?notice=` banners),
-`/[school]/listings/[id]` (public when public; `noindex`; Open Graph without the unit).
+`/[school]/listings/[id]` (public when public; `noindex`; Open Graph without the unit), `/[school]` (browse; see `search.md`),
+`/me/favorites` (signed in, onboarded; `noindex`).
+The listing page shows **Report listing** to signed-in visitors (not the owner or admins); see
+`moderation.md`.
+The listing page shows **Message host** to visitors (owners and admins see no button); it becomes
+**View conversation** when `conversationId` is set. `/messages`, `/messages/new?listing=<id>`, and
+`/messages/[id]` are described in `messaging.md`.

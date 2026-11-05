@@ -79,6 +79,30 @@ describe('searchListings visibility', () => {
       expect(await titles(school.id, { from: today })).toEqual(['Ends today']);
     }));
 
+  it('uses each school timezone for today, at both extremes of UTC offset', () =>
+    withRollback(async () => {
+      const [dates] = await db().execute<{ aheadYesterday: string; behindToday: string }>(
+        sql`select ((now() at time zone 'Pacific/Kiritimati')::date - 1)::text as "aheadYesterday",
+                   (now() at time zone 'Etc/GMT+12')::date::text as "behindToday"`,
+      );
+      const owner = await createUser();
+      const ahead = await createSchool({ timezone: 'Pacific/Kiritimati' });
+      const behind = await createSchool({ timezone: 'Etc/GMT+12' });
+      const base = { ...live, availableFrom: '2020-01-01' };
+      await insertListing(owner.id, ahead.id, {
+        ...base,
+        availableTo: dates.aheadYesterday,
+        title: 'Ended yesterday far ahead of UTC',
+      });
+      await insertListing(owner.id, behind.id, {
+        ...base,
+        availableTo: dates.behindToday,
+        title: 'Ends today far behind UTC',
+      });
+      expect(await titles(ahead.id)).toEqual([]);
+      expect(await titles(behind.id)).toEqual(['Ends today far behind UTC']);
+    }));
+
   it('hides listings when a block exists in either direction', () =>
     withRollback(async () => {
       const owner = await createUser();

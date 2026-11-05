@@ -136,6 +136,18 @@ export function formatBounds(b: Bounds): string {
   return [b.west, b.south, b.east, b.north].join(',');
 }
 
+const clamp = (n: number, limit: number): number => Math.min(limit, Math.max(-limit, n));
+
+// A map zoomed out past one world reports longitudes beyond ±180.
+export function clampBounds(b: Bounds): Bounds {
+  return {
+    west: clamp(b.west, 180),
+    south: clamp(b.south, 90),
+    east: clamp(b.east, 180),
+    north: clamp(b.north, 90),
+  };
+}
+
 const round5 = (n: number): number => Math.round(n * 1e5) / 1e5;
 
 export function roundBounds(b: Bounds): Bounds {

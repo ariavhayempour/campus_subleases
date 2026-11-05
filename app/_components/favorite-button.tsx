@@ -27,7 +27,7 @@ export function FavoriteButton({
   const [favorited, setFavorited] = useState(initialFavorited);
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
-  const classes = cn(baseClass, withText ? 'px-4' : 'w-9', className);
+  const buttonClass = cn(baseClass, withText ? 'px-4' : 'w-9');
   const icon = (
     <Heart aria-hidden className={cn('size-4', favorited && 'fill-rose-500 text-rose-500')} />
   );
@@ -37,7 +37,7 @@ export function FavoriteButton({
   if (!signedIn) {
     return (
       <SignInButton mode="redirect">
-        <button type="button" aria-label={label} className={classes}>
+        <button type="button" aria-label={label} className={cn(buttonClass, className)}>
           {icon}
           {text}
         </button>
@@ -50,8 +50,8 @@ export function FavoriteButton({
     setFavorited(next);
     setFailed(false);
     startTransition(async () => {
-      const result = await setFavoriteAction(listingId, next);
-      if (!result.ok) {
+      const result = await setFavoriteAction(listingId, next).catch(() => null);
+      if (!result?.ok) {
         setFavorited(!next);
         setFailed(true);
       }
@@ -59,23 +59,35 @@ export function FavoriteButton({
   }
 
   return (
-    <>
+    <span
+      className={cn(
+        withText ? 'inline-flex flex-col items-start gap-1' : 'relative inline-flex',
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={toggle}
         disabled={pending}
         aria-pressed={favorited}
         aria-label={label}
-        className={classes}
+        className={buttonClass}
       >
         {icon}
         {text}
       </button>
       {failed && (
-        <span role="alert" className="sr-only">
+        <span
+          role="alert"
+          className={cn(
+            'text-xs text-destructive',
+            !withText &&
+              'absolute right-0 top-full z-10 mt-1 w-44 rounded-md bg-background px-2 py-1 shadow-sm ring-1 ring-border',
+          )}
+        >
           Could not update your saved listings. Try again.
         </span>
       )}
-    </>
+    </span>
   );
 }

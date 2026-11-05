@@ -29,6 +29,22 @@ async function hostWithListing(overrides: Parameters<typeof insertListing>[2] = 
 }
 
 describe('getListingDetail visibility', () => {
+  it('returns the renter conversation id, and the unit with it', () =>
+    withRollback(async () => {
+      const { owner, listing } = await hostWithListing();
+      const renter = await createUser();
+      const before = await getListingDetail(actorFor(renter.id), listing.id);
+      expect(before).toMatchObject({ conversationId: null, unit: null });
+      const [conversation] = await db()
+        .insert(conversations)
+        .values({ listingId: listing.id, hostId: owner.id, renterId: renter.id })
+        .returning();
+      const after = await getListingDetail(actorFor(renter.id), listing.id);
+      expect(after).toMatchObject({ conversationId: conversation.id, unit: '4B' });
+      const ownerView = await getListingDetail(actorFor(owner.id), listing.id);
+      expect(ownerView.conversationId).toBeNull();
+    }));
+
   it('shows a public listing to anyone, without the unit', () =>
     withRollback(async () => {
       const { listing } = await hostWithListing();

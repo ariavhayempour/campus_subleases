@@ -16,6 +16,14 @@ the `anon`/`authenticated` roles can read nothing. The server connects as `postg
 bypasses RLS. `tests/db/harness.test.ts` enforces both facts for every table. New tables must call
 `.enableRLS()` (the installed drizzle-orm has no `pgTable.withRLS` helper).
 
+### Realtime policy
+
+`realtime.messages` (Supabase's table behind Realtime) has exactly one policy, "users join their
+own channel": `for select to authenticated using (realtime.topic() = 'user:' || (select
+auth.jwt() ->> 'sub'))`. It was added by the custom migration `0006_realtime-user-channel-policy.sql`.
+`tests/db/realtime-policy.test.ts` pins it (exactly one policy on `realtime.messages`, command `SELECT`, role `authenticated`, and a
+`USING` expression containing the `'user:'` literal and `sub`), so a second policy fails the test. See `messaging.md`.
+
 ## PostGIS
 
 PostGIS lives in the `extensions` schema (Supabase convention; on the default search_path).
@@ -37,6 +45,16 @@ PostGIS lives in the `extensions` schema (Supabase convention; on the default se
   `server/db/migrations/**`, and to production on merge to `main`. Vercel deploys independently,
   so new code can briefly run against the old schema (and vice versa); expand-then-contract keeps
   that safe. See `environment.md`.
+
+## Moderation tables and indexes
+
+`reports` and `admin_audit_log` (RLS enabled, no policies) back `moderation.md` and `admin.md`.
+Migration `0007_moderation-indexes.sql` added two indexes:
+`admin_audit_log_target` (`target_type`, `target_id`, `created_at`) for per-target history, and
+`reports_reporter` (`reporter_id`, `created_at`) for the 24-hour report rate limit. Reports have a
+partial unique index `reports_open_unique` (reporter, target type, target id, where open) for
+duplicates. Report and audit `target_id` is text, so joins to uuid ids compare as text. Their user
+references are `ON DELETE SET NULL`, so deleting an account keeps the rows.
 
 ## Conventions
 

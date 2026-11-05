@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
 import {
   isAmenity,
   MAX_ACTIVE_LISTINGS,
@@ -8,11 +8,12 @@ import {
 } from '@/lib/listing-options';
 import { isUuid, type ListingInput, type LngLat } from '@/lib/validation/listing';
 import { db } from '@/server/db/client';
-import { blocks, conversations, listingPhotos, listings, schools, users } from '@/server/db/schema';
+import { conversations, listingPhotos, listings, schools, users } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound } from './errors';
 import { isFavoritedBy } from './listing-cards';
 import { countsTowardCap, isExpired, isPublicListing } from './listing-sql';
+import { getBlockState } from './moderation';
 import { photoUrls } from './photos';
 
 type ListingRow = typeof listings.$inferSelect;
@@ -32,6 +33,7 @@ export type ListingDetail = Omit<
   photos: ListingPhotoView[];
   viewer: 'owner' | 'admin' | 'visitor';
   isFavorited: boolean;
+  conversationId: string | null; // the viewer's conversation on this listing as renter
 };
 
 export type MyListing = {
@@ -79,27 +81,16 @@ async function loadPhotos(listingId: string): Promise<ListingPhotoView[]> {
   });
 }
 
-async function blockedBetween(a: string, b: string): Promise<boolean> {
-  const rows = await db()
-    .select({ blockerId: blocks.blockerId })
-    .from(blocks)
-    .where(
-      or(
-        and(eq(blocks.blockerId, a), eq(blocks.blockedId, b)),
-        and(eq(blocks.blockerId, b), eq(blocks.blockedId, a)),
-      ),
-    )
-    .limit(1);
-  return rows.length > 0;
-}
-
-async function hasConversation(listingId: string, renterId: string): Promise<boolean> {
-  const rows = await db()
+async function findRenterConversationId(
+  listingId: string,
+  renterId: string,
+): Promise<string | null> {
+  const [row] = await db()
     .select({ id: conversations.id })
     .from(conversations)
     .where(and(eq(conversations.listingId, listingId), eq(conversations.renterId, renterId)))
     .limit(1);
-  return rows.length > 0;
+  return row?.id ?? null;
 }
 
 export async function getListingDetail(actor: Actor, listingId: string): Promise<ListingDetail> {
@@ -133,10 +124,13 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
         : 'visitor';
   if (viewer === 'visitor') {
     if (!row.isPublic) throw notFound();
-    if (viewerId && (await blockedBetween(viewerId, listing.ownerId))) throw notFound();
+    if (viewerId) {
+      const state = await getBlockState(viewerId, listing.ownerId);
+      if (state.viewerBlocked || state.blockedByOther) throw notFound();
+    }
   }
-  const showUnit =
-    viewer !== 'visitor' || (viewerId !== null && (await hasConversation(listing.id, viewerId)));
+  const conversationId = viewerId ? await findRenterConversationId(listing.id, viewerId) : null;
+  const showUnit = viewer !== 'visitor' || conversationId !== null;
 
   return {
     id: listing.id,
@@ -173,6 +167,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
     photos: await loadPhotos(listing.id),
     viewer,
     isFavorited: row.isFavorited,
+    conversationId,
   };
 }
 

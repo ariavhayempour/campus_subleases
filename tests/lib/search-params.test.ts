@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clampBounds,
   effectiveSort,
   hasActiveFilters,
   parseSearchParams,
@@ -126,6 +127,29 @@ describe('roundBounds', () => {
       east: -89.1,
       north: 43.2,
     });
+  });
+});
+
+describe('clampBounds', () => {
+  it('pulls world-copy longitudes and out-of-range latitudes back into range', () => {
+    expect(clampBounds({ west: -412.5, south: -95, east: 388.25, north: 91 })).toEqual({
+      west: -180,
+      south: -90,
+      east: 180,
+      north: 90,
+    });
+  });
+
+  it('leaves in-range bounds unchanged', () => {
+    const bounds = { west: -89.41, south: 43.07, east: -89.39, north: 43.08 };
+    expect(clampBounds(bounds)).toEqual(bounds);
+  });
+
+  it('makes a zoomed-out map area survive the URL round trip', () => {
+    const bounds = roundBounds(
+      clampBounds({ west: -300.123456, south: -85, east: 250, north: 85 }),
+    );
+    expect(roundTrip({ bounds })).toEqual({ bounds });
   });
 });
 

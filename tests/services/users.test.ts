@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { db } from '@/server/db/client';
 import { schools } from '@/server/db/schema';
+import { deleteProcessedPhotos } from '@/server/services/photos';
 import { ANONYMOUS, type UserActor } from '@/server/services/actor';
 import { Forbidden, ValidationError } from '@/server/services/errors';
 import {
@@ -13,7 +14,12 @@ import {
   syncUserFromClerk,
 } from '@/server/services/users';
 import { withRollback } from '../helpers/db';
-import { createSchool, createUser } from '../helpers/fixtures';
+import { createSchool, createUser, insertListing, insertPhoto } from '../helpers/fixtures';
+
+vi.mock('@/server/services/photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/server/services/photos')>()),
+  deleteProcessedPhotos: vi.fn().mockResolvedValue(undefined),
+}));
 
 const actorFor = (userId: string): UserActor => ({ kind: 'user', userId, isAdmin: false });
 const seededId = async (slug: string): Promise<string> =>
@@ -150,5 +156,21 @@ describe('onboarding', () => {
         needsOnboarding: false,
         homeSchoolSlug: null,
       });
+    }));
+});
+
+describe('deleteUserFromClerk photo cleanup', () => {
+  it('removes their listing photo files after commit', () =>
+    withRollback(async () => {
+      const owner = await createUser();
+      const school = await createSchool();
+      const listing = await insertListing(owner.id, school.id);
+      await insertPhoto(listing.id, 0, `${listing.id}/a`);
+      await insertPhoto(listing.id, 1, `${listing.id}/b`);
+      await deleteUserFromClerk(owner.id);
+      expect(await getUserById(owner.id)).toBeNull();
+      expect(deleteProcessedPhotos).toHaveBeenCalledTimes(1);
+      const paths = vi.mocked(deleteProcessedPhotos).mock.calls[0][0];
+      expect([...paths].sort()).toEqual([`${listing.id}/a`, `${listing.id}/b`]);
     }));
 });

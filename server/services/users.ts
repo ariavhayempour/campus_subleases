@@ -1,10 +1,12 @@
 import { and, eq } from 'drizzle-orm';
-import { db } from '@/server/db/client';
-import { schools, users } from '@/server/db/schema';
+import { db, type DbExecutor } from '@/server/db/client';
+import { listingPhotos, listings, schools, users } from '@/server/db/schema';
 import { formatDisplayName } from '@/lib/display-name';
 import { onboardingSchema } from '@/lib/validation/onboarding';
 import { requireUser, type Actor, type UserActor } from './actor';
+import { bestEffort } from './best-effort';
 import { parseInput, ValidationError } from './errors';
+import { deleteProcessedPhotos } from './photos';
 
 export type UserRow = typeof users.$inferSelect;
 export type ClerkUserNames = { firstName: string | null; lastName: string | null };
@@ -16,19 +18,31 @@ const nameColumns = ({ firstName, lastName }: ClerkUserNames) => ({
   displayName: formatDisplayName(firstName, lastName),
 });
 
-export async function syncUserFromClerk(snapshot: ClerkUserSnapshot): Promise<void> {
+export async function syncUserFromClerk(
+  snapshot: ClerkUserSnapshot,
+  executor: DbExecutor = db(),
+): Promise<void> {
   const values = {
     ...nameColumns(snapshot),
     status: snapshot.banned ? 'banned' : 'active',
   } as const;
-  await db()
+  await executor
     .insert(users)
     .values({ id: snapshot.id, ...values })
     .onConflictDoUpdate({ target: users.id, set: { ...values, updatedAt: new Date() } });
 }
 
 export async function deleteUserFromClerk(userId: string): Promise<void> {
-  await db().delete(users).where(eq(users.id, userId));
+  const paths = await db().transaction(async (tx) => {
+    const photos = await tx
+      .select({ storagePath: listingPhotos.storagePath })
+      .from(listingPhotos)
+      .innerJoin(listings, eq(listings.id, listingPhotos.listingId))
+      .where(eq(listings.ownerId, userId));
+    await tx.delete(users).where(eq(users.id, userId));
+    return photos.map((photo) => photo.storagePath);
+  });
+  await bestEffort(() => deleteProcessedPhotos(paths));
 }
 
 export async function getUserById(userId: string): Promise<UserRow | null> {
