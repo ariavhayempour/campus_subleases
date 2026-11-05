@@ -69,6 +69,21 @@ export async function listObjects(name: Bucket, prefix: string): Promise<StoredO
   }
 }
 
+export async function listFolders(name: Bucket, prefix: string): Promise<string[]> {
+  const folder = prefix.replace(/\/+$/, '');
+  const folders: string[] = [];
+  for (let offset = 0; ; offset += LIST_PAGE_SIZE) {
+    const { data, error } = await bucket(name).list(folder, {
+      limit: LIST_PAGE_SIZE,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+    if (error) fail('list', folder, error);
+    for (const entry of data) if (entry.id === null) folders.push(entry.name);
+    if (data.length < LIST_PAGE_SIZE) return folders;
+  }
+}
+
 export async function objectExists(name: Bucket, path: string): Promise<boolean> {
   try {
     // A missing object resolves to data=false; other failures throw.
@@ -79,10 +94,14 @@ export async function objectExists(name: Bucket, path: string): Promise<boolean>
   }
 }
 
+const REMOVE_BATCH_SIZE = 100;
+
 export async function removeObjects(name: Bucket, paths: string[]): Promise<void> {
-  if (paths.length === 0) return;
-  const { error } = await bucket(name).remove(paths);
-  if (error) fail('remove', paths.join(', '), error);
+  for (let start = 0; start < paths.length; start += REMOVE_BATCH_SIZE) {
+    const batch = paths.slice(start, start + REMOVE_BATCH_SIZE);
+    const { error } = await bucket(name).remove(batch);
+    if (error) fail('remove', batch.join(', '), error);
+  }
 }
 
 export function publicObjectUrl(name: Bucket, path: string): string {
