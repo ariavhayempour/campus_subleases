@@ -51,3 +51,5 @@ export const adminDeleteListingSchema = z.object({
   listingId,
   confirm: z.literal(CONFIRM_WORD, { error: `Type ${CONFIRM_WORD} to confirm` }),
 });
+
+export const banSchema = z.object({ userId: z.string().min(1).max(100) });

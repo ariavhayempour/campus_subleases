@@ -26,7 +26,7 @@ import { isExpired, listingVersion } from './listing-sql';
 import { deleteListingRow } from './listings';
 import { deleteProcessedPhotos } from './photos';
 
-type UserStatus = (typeof userStatus.enumValues)[number];
+export type UserStatus = (typeof userStatus.enumValues)[number];
 
 export type AdminListingRow = {
   id: string;
@@ -96,10 +96,9 @@ const pendingQueue: SQL = sql.join(
   sql` and `,
 );
 
-export async function listAdminListings(actor: Actor, input: unknown): Promise<AdminListingRow[]> {
-  requireAdmin(actor);
-  const { tab, school } = parseInput(adminListingsQuerySchema, input);
-  const rows = await db()
+// Callers add where/orderBy/limit; shared with the per-user listing section.
+export function adminListingRowsQuery() {
+  return db()
     .select({
       id: listings.id,
       title: listings.title,
@@ -117,7 +116,13 @@ export async function listAdminListings(actor: Actor, input: unknown): Promise<A
     })
     .from(listings)
     .innerJoin(schools, eq(schools.id, listings.schoolId))
-    .innerJoin(users, eq(users.id, listings.ownerId))
+    .innerJoin(users, eq(users.id, listings.ownerId));
+}
+
+export async function listAdminListings(actor: Actor, input: unknown): Promise<AdminListingRow[]> {
+  requireAdmin(actor);
+  const { tab, school } = parseInput(adminListingsQuerySchema, input);
+  const rows = await adminListingRowsQuery()
     .where(
       and(
         tab === 'pending' ? pendingQueue : eq(listings.reviewStatus, tab),

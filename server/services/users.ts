@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { db } from '@/server/db/client';
+import { db, type DbExecutor } from '@/server/db/client';
 import { listingPhotos, listings, schools, users } from '@/server/db/schema';
 import { formatDisplayName } from '@/lib/display-name';
 import { onboardingSchema } from '@/lib/validation/onboarding';
@@ -18,12 +18,15 @@ const nameColumns = ({ firstName, lastName }: ClerkUserNames) => ({
   displayName: formatDisplayName(firstName, lastName),
 });
 
-export async function syncUserFromClerk(snapshot: ClerkUserSnapshot): Promise<void> {
+export async function syncUserFromClerk(
+  snapshot: ClerkUserSnapshot,
+  executor: DbExecutor = db(),
+): Promise<void> {
   const values = {
     ...nameColumns(snapshot),
     status: snapshot.banned ? 'banned' : 'active',
   } as const;
-  await db()
+  await executor
     .insert(users)
     .values({ id: snapshot.id, ...values })
     .onConflictDoUpdate({ target: users.id, set: { ...values, updatedAt: new Date() } });
