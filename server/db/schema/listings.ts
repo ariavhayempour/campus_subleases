@@ -11,6 +11,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { createdAt, geographyPoint, tsvector, updatedAt } from './columns';
@@ -96,7 +97,7 @@ export const listingPhotos = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    index('listing_photos_listing').on(t.listingId, t.position),
+    uniqueIndex('listing_photos_listing_position').on(t.listingId, t.position),
     check('listing_photos_position_range', sql`${t.position} between 0 and 9`),
   ],
 ).enableRLS();
