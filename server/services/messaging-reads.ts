@@ -159,7 +159,7 @@ type ThreadListingRow = {
   unit: string | null;
 };
 
-function toThreadListing(
+export function toThreadListing(
   row: ThreadListingRow,
   unit: string | null,
   linkable: boolean,

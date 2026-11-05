@@ -53,3 +53,26 @@ export const adminDeleteListingSchema = z.object({
 });
 
 export const banSchema = z.object({ userId: z.string().min(1).max(100) });
+
+export const reportsQuerySchema = z.object({
+  status: z.enum(['open', 'resolved', 'all']).default('open'),
+  school: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((value) => value || undefined),
+  reason: z
+    .enum(REPORT_REASONS)
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+});
+
+export const resolveReportSchema = z.object({
+  reportId: z.uuid(),
+  note: z
+    .string()
+    .trim()
+    .min(1, 'Add a resolution note')
+    .max(ADMIN_NOTE_MAX, 'Keep the note under 1,000 characters'),
+});

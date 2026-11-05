@@ -60,6 +60,9 @@ const messageListing = alias(listings, 'message_listing');
 const messageSender = alias(users, 'message_sender');
 const targetSchool = alias(schools, 'target_school');
 
+// The computed school slug of a report row's target, for filtering.
+export const reportSchoolSlug = targetSchool.slug;
+
 // Callers add where/orderBy/limit; the target joins resolve label and school per target type.
 export function reportRowsQuery() {
   return db()
