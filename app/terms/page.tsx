@@ -41,11 +41,6 @@ export default function TermsPage() {
           our discretion, including after it has been approved.
         </li>
         <li>
-          Listings must not contain discriminatory language. A gender preference is allowed only for
-          shared living spaces, such as a room in a shared apartment or a place with roommates who
-          are staying.
-        </li>
-        <li>
           You keep ownership of what you post. You give us permission to store, display, and resize
           it on the site, and to show it in link previews, for as long as it is posted.
         </li>
