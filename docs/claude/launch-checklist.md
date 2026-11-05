@@ -1,8 +1,8 @@
 # Launch checklist
 
 Settings to confirm before and right after the first production deploy. Values come from
-`auth.md`, `messaging.md`, `storage.md`, `environment.md`, and the design spec. Secret values
-are never written here, only variable names.
+`auth.md`, `messaging.md`, `storage.md`, and `environment.md`. Secret values are never written
+here, only variable names.
 
 ## Before launch (open items)
 

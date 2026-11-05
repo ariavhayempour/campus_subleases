@@ -43,7 +43,7 @@
   unit, or adding a photo → `pending` (clears `review_note`). Removing or reordering photos,
   dates, rooms, roommates, private bathroom, furnished, amenities, and status changes keep the
   current review status. School and type can't change on edit, so they need no re-review. The 20/hour upload limit and the "any added photo" re-review rule are
-  owner decisions that differ from the design spec. Editing a `rejected` listing always
+  owner decisions. Editing a `rejected` listing always
   resubmits it; a `hidden` one stays hidden. "Resubmit" in `/me/listings` is the edit flow.
 - **Stale edits:** `updateListing` re-reads the listing (`FOR UPDATE`) and its photo ids inside
   the transaction and throws `Conflict` if the review status or photo set changed since the edit

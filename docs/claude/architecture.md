@@ -1,8 +1,9 @@
 # Architecture
 
 Student sublease platform: Next.js (App Router) on Vercel; Supabase Postgres + PostGIS (via
-Drizzle), Supabase Storage and Realtime; Clerk auth; Mapbox; Sentry. Design spec:
-`docs/superpowers/specs/2026-09-24-sublease-platform-design.md` (untracked planning artifact).
+Drizzle), Supabase Storage and Realtime; Clerk auth; Mapbox; Sentry. This folder is the
+technical reference; design specs and plans are local-only planning artifacts and are not in the
+repository.
 
 ## Layers
 
@@ -33,7 +34,16 @@ components/ui/       shadcn/ui components (generated; edit freely)
 - Services are `(actor, input) → result`: validate, check permissions, throw typed errors
   (see `services.md`).
 - UI is desktop-first and responsive; admin pages are desktop-only.
-- Dependencies are limited to the approved list in the design spec.
+- Dependencies are limited to the stack below; adding one needs owner approval.
+
+## Tech stack
+
+- TypeScript (strict), Next.js App Router on Vercel (incl. Vercel Cron), Node 22+, pnpm
+- Auth: Clerk. Database: Supabase Postgres + PostGIS through Drizzle ORM (drizzle-kit migrations)
+- Storage and live chat: Supabase Storage and Realtime Broadcast (private channels)
+- Maps and geocoding: Mapbox (`react-map-gl`, `mapbox-gl`, `@mapbox/search-js-react`)
+- UI: Tailwind CSS + shadcn/ui; images processed with `sharp`; forms with `react-hook-form`
+- Validation: Zod. Monitoring: Sentry. Tests: Vitest (services, real local Postgres) and Playwright
 
 See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`,
 `auth.md`, `testing.md`, `environment.md`, `site-pages.md`, `moderation.md`, `admin.md`.
