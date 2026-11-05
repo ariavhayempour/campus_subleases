@@ -31,4 +31,4 @@ components/ui/       shadcn/ui components (generated; edit freely)
 - UI is desktop-first and responsive; admin pages are desktop-only.
 - Dependencies are limited to the approved list in the design spec.
 
-See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`.
+See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`, `site-pages.md`.

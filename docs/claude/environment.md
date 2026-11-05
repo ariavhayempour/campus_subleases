@@ -31,7 +31,7 @@ production.
 | `NEXT_PUBLIC_MAPBOX_TOKEN`                                         | public                | Address search and maps (public token; URL-restrict per environment when possible) |
 | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`                      | public / build secret | Sentry                                                                             |
 | `CRON_SECRET`                                                      | secret                | `/api/cron/*` (later)                                                              |
-| `NEXT_PUBLIC_SITE_URL`                                             | public                | Absolute URLs (later)                                                              |
+| `NEXT_PUBLIC_SITE_URL`                                             | public                | Absolute URLs in robots.txt and sitemap.xml (see `site-pages.md`)                  |
 | `E2E_CLERK_USER_EMAIL`                                             | test only             | Playwright (a `+clerk_test` user; signs in by email code)                          |
 | `E2E_CLERK_USER2_EMAIL`                                            | test only             | Playwright messaging test (a second `+clerk_test` user)                            |
 
