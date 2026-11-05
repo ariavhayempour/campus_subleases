@@ -10,6 +10,9 @@ export type SeedListing = {
   description?: string;
 };
 
+// A map area around the seeded listings' location.
+export const BROWSE_BBOX = '-89.41,43.06,-89.39,43.08';
+
 const DESCRIPTION = 'Zebracorn test listing with big windows near campus.';
 
 function connect(): postgres.Sql {

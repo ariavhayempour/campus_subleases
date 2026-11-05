@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { useMediaQuery } from '@/app/_lib/use-media-query';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LngLat } from '@/lib/validation/listing';
@@ -31,11 +32,21 @@ export function BrowseView({
 }: BrowseViewProps) {
   const router = useRouter();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [mobileView, setMobileView] = useState<'list' | 'map'>('list');
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const [mobileView, setMobileView] = useState<'list' | 'map'>(filters.bounds ? 'map' : 'list');
+  // Phones load Mapbox only once the map is first shown, then keep it mounted.
+  const [mapRequested, setMapRequested] = useState(mobileView === 'map');
+  // Latch on desktop too, so shrinking below 768px never unmounts (and later re-bills) the map.
+  if (isDesktop && !mapRequested) setMapRequested(true);
 
   function navigate(next: SearchFilters) {
     const nextQuery = toSearchParams(next).toString();
     router.push(nextQuery ? `/${school.slug}?${nextQuery}` : `/${school.slug}`);
+  }
+
+  function toggleMobileView() {
+    if (mobileView === 'list') setMapRequested(true);
+    setMobileView(mobileView === 'list' ? 'map' : 'list');
   }
 
   function clearArea() {
@@ -57,7 +68,7 @@ export function BrowseView({
           variant="outline"
           size="sm"
           className="ml-auto md:hidden"
-          onClick={() => setMobileView((view) => (view === 'list' ? 'map' : 'list'))}
+          onClick={toggleMobileView}
         >
           {mobileView === 'list' ? 'Show map' : 'Show list'}
         </Button>
@@ -83,15 +94,19 @@ export function BrowseView({
             mobileView === 'list' && 'hidden md:block',
           )}
         >
-          <BrowseMap
-            schoolSlug={school.slug}
-            campus={school.campus}
-            zoom={school.zoom}
-            pins={pins}
-            bounds={filters.bounds}
-            hoveredId={hoveredId}
-            onSearchArea={(bounds) => navigate({ ...filters, bounds })}
-          />
+          {isDesktop || mapRequested ? (
+            <BrowseMap
+              schoolSlug={school.slug}
+              campus={school.campus}
+              zoom={school.zoom}
+              pins={pins}
+              bounds={filters.bounds}
+              hoveredId={hoveredId}
+              onSearchArea={(bounds) => navigate({ ...filters, bounds })}
+            />
+          ) : (
+            <div className="h-full w-full animate-pulse rounded-xl bg-muted" />
+          )}
         </div>
       </div>
     </div>

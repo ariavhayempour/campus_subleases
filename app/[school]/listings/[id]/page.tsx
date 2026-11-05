@@ -153,6 +153,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
           {listing.viewer === 'visitor' && (
             <FavoriteButton
               listingId={listing.id}
+              listingTitle={listing.title}
               initialFavorited={listing.isFavorited}
               signedIn={actor.kind === 'user'}
               withText
