@@ -22,7 +22,8 @@ import { requireUser, type Actor } from './actor';
 import { NotFound, parseInput, ValidationError } from './errors';
 import { coverJoin } from './listing-cards';
 import { isPublicListing, noBlockWith } from './listing-sql';
-import { composerStateFor, toMessageView } from './messaging';
+import { composerStateWithBlock, toMessageView } from './messaging';
+import { getBlockState } from './moderation';
 import { photoUrls } from './photos';
 
 export type Participant = { id: string; displayName: string };
@@ -225,6 +226,8 @@ export async function getThread(actor: Actor, conversationId: string): Promise<T
         .from(users)
         .where(eq(users.id, otherId))
     : [];
+  const block = other ? await getBlockState(user.userId, other.id) : null;
+  const blocked = block !== null && (block.viewerBlocked || block.blockedByOther);
   const page = await fetchMessages(conversation.id, null);
 
   return {
@@ -242,11 +245,12 @@ export async function getThread(actor: Actor, conversationId: string): Promise<T
               unit: row.unit,
             },
             row.unit,
-            row.ownerId === user.userId || row.isPublic,
+            row.ownerId === user.userId || (row.isPublic && !blocked),
           )
         : null,
     otherUser: other ?? null,
-    composer: await composerStateFor(user.userId, other ? other.id : null),
+    composer:
+      other && block ? await composerStateWithBlock(user.userId, other.id, block) : 'deleted_user',
     ...page,
   };
 }

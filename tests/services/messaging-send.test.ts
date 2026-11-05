@@ -265,6 +265,20 @@ describe('sendMessage', () => {
       await expect(send(stranger.id, false, 'not-a-uuid')).rejects.toBeInstanceOf(NotFound);
     }));
 
+  it('refuses a blocked send without inserting a message', () =>
+    withRollback(async () => {
+      const { owner, renter, conversation } = await setup();
+      await db().insert(blocks).values({ blockerId: owner.id, blockedId: renter.id });
+      const count = async (): Promise<number> =>
+        (await db().select().from(messages).where(eq(messages.conversationId, conversation.id)))
+          .length;
+      const before = await count();
+      await expect(
+        sendMessage(actorFor(renter.id), { conversationId: conversation.id, body: 'hi' }),
+      ).rejects.toThrow("You can't reply to this conversation");
+      expect(await count()).toBe(before);
+    }));
+
   it('refuses when a block exists, without revealing it to the blocked user', () =>
     withRollback(async () => {
       const { owner, renter, conversation } = await setup();

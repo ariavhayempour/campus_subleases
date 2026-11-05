@@ -215,6 +215,21 @@ describe('getThread', () => {
       expect((await getThread(actorFor(owner.id), conversation.id)).listing?.linkable).toBe(true);
     }));
 
+  it('does not link the listing when a block exists in either direction', () =>
+    withRollback(async () => {
+      const { owner, renter, conversation } = await setup();
+      const linkable = async (id: string): Promise<boolean | undefined> =>
+        (await getThread(actorFor(id), conversation.id)).listing?.linkable;
+      expect(await linkable(renter.id)).toBe(true);
+      await blockUser(actorFor(owner.id), { userId: renter.id });
+      expect(await linkable(renter.id)).toBe(false);
+      expect(await linkable(owner.id)).toBe(true);
+      await unblockUser(actorFor(owner.id), { userId: renter.id });
+      await blockUser(actorFor(renter.id), { userId: owner.id });
+      expect(await linkable(renter.id)).toBe(false);
+      expect(await linkable(owner.id)).toBe(true);
+    }));
+
   it('pages at 100 messages', () =>
     withRollback(async () => {
       const { owner, renter, conversation } = await setup();

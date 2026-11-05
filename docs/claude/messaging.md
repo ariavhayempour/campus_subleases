@@ -62,10 +62,19 @@ never told they were blocked: they see the generic `cannot_reply` text.
     day — try again tomorrow". Only creating a conversation counts; replying never does.
 - **Limit-check order and locking:** each send or start runs in one transaction that first takes a
   per-sender advisory lock (`pg_advisory_xact_lock(hashtext('messaging:' || userId))`), so
-  concurrent sends cannot both pass the check. `markConversationRead` takes no lock. Inside it, `startConversation` checks the message
-  limit, then looks the conversation up again, and only when it must create one checks the
-  conversation limit. Permission checks (listing, blocks, bans) run before the transaction.
+  concurrent sends cannot both pass the check. `markConversationRead` takes no lock. Permission
+  checks (listing, blocks, bans) also run before the transaction, so common refusals fail fast,
+  and are re-checked under the lock:
+  - `sendMessage`: lock, full composer-state re-check, message limit, insert.
+  - `startConversation`: lock, look the conversation up again, re-check, message limit,
+    conversation limit (only when creating one). For an existing conversation the re-check is the
+    full composer state. For a new one it covers blocks only and gives "Listing not found"; the
+    renter's own ban is checked only before the transaction.
+  - `blockUser` takes both users' locks (sorted, via `lockMessagingUsers`) before inserting, so a
+    send either commits before the block or waits and sees it.
+
   Both windows compare against `clock_timestamp()`.
+
 - **`clock_timestamp()`, not `now()`:** messaging writes `created_at`, `last_message_at`, and read
   times with `clock_timestamp()`. `now()` is frozen for a whole transaction, which would give
   several messages in one transaction (and every rolled-back service test) identical times, and
@@ -161,6 +170,8 @@ Live delivery is a convenience on top of the database, which is the source of tr
   there is refused. The owner and admins can still open the page.
 - **Sending:** a block stops sending in that conversation in both directions (composer states
   above). The history stays readable to both, and unblocking reopens the composer on both sides.
+- The thread header links to the listing only when it is public (or the viewer owns it) and no
+  block exists in either direction, since the listing page is a 404 to a blocked visitor.
 - Blocking is silent: the blocked user gets no notification and sees only the generic "You can't
   reply" text. The server refuses their next send immediately; their open page updates on its
   next refresh or resync.
@@ -193,10 +204,3 @@ Live delivery is a convenience on top of the database, which is the source of tr
   It is the dev instance's public Frontend API domain, not a secret.
 - **E2E uses two real Clerk test users** (`E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER2_EMAIL`). The
   listing is seeded and approved by SQL, as in earlier plans (the admin approval UI is plan 5).
-
-## Known issues
-
-- **Dead listing link in a blocked thread.** The thread header links to the listing when it is
-  public or the viewer owns it, without checking for a block. The listing page is a 404 for a
-  visitor when either side has blocked the other, so only the renter (whichever side placed the
-  block) sees a header link that 404s; the host owns the listing, so their link works. No data leaks. Pending a fix.

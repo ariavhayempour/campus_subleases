@@ -63,6 +63,9 @@ describe('moderation', () => {
   it('rejects blocking a user who does not exist', () =>
     withRollback(async () => {
       const me = await createUser();
+      await expect(blockUser(actorFor(me.id), { userId: 'user_missing' })).rejects.toMatchObject({
+        message: 'User not found',
+      });
       await expect(blockUser(actorFor(me.id), { userId: 'user_missing' })).rejects.toBeInstanceOf(
         NotFound,
       );

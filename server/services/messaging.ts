@@ -14,8 +14,9 @@ import { conversations, listings, messages, schools, users } from '@/server/db/s
 import { publishToUser } from '@/server/realtime/publish';
 import { requireUser, type Actor } from './actor';
 import { Forbidden, NotFound, parseInput, RateLimited, ValidationError } from './errors';
+import { lockMessagingUsers } from './locks';
 import { isPublicListing, noBlockWith } from './listing-sql';
-import { getBlockState } from './moderation';
+import { getBlockState, type BlockState } from './moderation';
 
 export type SendResult = { conversationId: string; message: MessageView };
 
@@ -36,11 +37,26 @@ export function toMessageView(row: typeof messages.$inferSelect): MessageView {
 export async function composerStateFor(
   viewerId: string,
   otherId: string | null,
+  executor: DbExecutor = db(),
 ): Promise<ComposerState> {
   if (otherId === null) return 'deleted_user';
-  const { viewerBlocked, blockedByOther } = await getBlockState(viewerId, otherId);
+  return composerStateWithBlock(
+    viewerId,
+    otherId,
+    await getBlockState(viewerId, otherId, executor),
+    executor,
+  );
+}
+
+// Takes an already-read block state so callers that need both do not query twice.
+export async function composerStateWithBlock(
+  viewerId: string,
+  otherId: string,
+  { viewerBlocked, blockedByOther }: BlockState,
+  executor: DbExecutor = db(),
+): Promise<ComposerState> {
   if (viewerBlocked) return 'you_blocked';
-  const rows = await db()
+  const rows = await executor
     .select({ status: users.status })
     .from(users)
     .where(inArray(users.id, [viewerId, otherId]));
@@ -73,11 +89,6 @@ async function loadParticipantConversation(
     throw new NotFound('Conversation not found');
   }
   return conversation;
-}
-
-// Serializes rate-limit checks per sender so concurrent sends cannot both pass.
-async function lockSender(executor: DbExecutor, userId: string): Promise<void> {
-  await executor.execute(sql`select pg_advisory_xact_lock(hashtext('messaging:' || ${userId}))`);
 }
 
 async function assertUnderMessageLimit(executor: DbExecutor, userId: string): Promise<void> {
@@ -182,7 +193,8 @@ export async function sendMessage(actor: Actor, input: unknown): Promise<SendRes
   assertOpen(await composerStateFor(user.userId, recipientId));
 
   const message = await db().transaction(async (tx) => {
-    await lockSender(tx, user.userId);
+    await lockMessagingUsers(tx, [user.userId]);
+    assertOpen(await composerStateFor(user.userId, recipientId, tx));
     await assertUnderMessageLimit(tx, user.userId);
     return insertMessageInto(tx, conversation, user.userId, body);
   });
@@ -221,8 +233,7 @@ export async function startConversation(actor: Actor, input: unknown): Promise<S
     assertOpen(await composerStateFor(user.userId, otherParticipant(existing, user.userId)));
 
   const { conversation, message } = await db().transaction(async (tx) => {
-    await lockSender(tx, user.userId);
-    await assertUnderMessageLimit(tx, user.userId);
+    await lockMessagingUsers(tx, [user.userId]);
     const findConversation = async (): Promise<ConversationRow | undefined> => {
       const [row] = await tx
         .select()
@@ -233,6 +244,13 @@ export async function startConversation(actor: Actor, input: unknown): Promise<S
       return row;
     };
     let found = await findConversation();
+    if (found) {
+      assertOpen(await composerStateFor(user.userId, otherParticipant(found, user.userId), tx));
+    } else {
+      const block = await getBlockState(user.userId, listing.ownerId, tx);
+      if (block.viewerBlocked || block.blockedByOther) throw new NotFound('Listing not found');
+    }
+    await assertUnderMessageLimit(tx, user.userId);
     if (!found) {
       await assertUnderConversationLimit(tx, user.userId);
       await tx
