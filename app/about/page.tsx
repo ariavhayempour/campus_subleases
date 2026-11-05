@@ -7,6 +7,7 @@ import { SAFETY_NOTICE } from '@/lib/messaging-options';
 export const metadata: Metadata = {
   title: 'About',
   description: `How ${APP_NAME} works: students sublease their own place to other students, for free.`,
+  alternates: { canonical: '/about' },
 };
 
 export default function AboutPage() {

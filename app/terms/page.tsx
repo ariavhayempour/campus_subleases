@@ -6,6 +6,7 @@ import { APP_NAME } from '@/lib/app-config';
 export const metadata: Metadata = {
   title: 'Terms of Use',
   description: `The rules for using ${APP_NAME}.`,
+  alternates: { canonical: '/terms' },
 };
 
 export default function TermsPage() {

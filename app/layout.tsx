@@ -6,6 +6,7 @@ import { MessagingProvider } from '@/app/_components/messaging-provider';
 import { SiteFooter } from '@/app/_components/site-footer';
 import { SiteHeader } from '@/app/_components/site-header';
 import { APP_NAME } from '@/lib/app-config';
+import { siteUrl } from '@/lib/site-url';
 import './globals.css';
 
 const geistSans = Geist({
@@ -19,6 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
   description: 'Sublease your place to other students, or find one near campus.',
 };

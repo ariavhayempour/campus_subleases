@@ -7,6 +7,7 @@ import { DELETED_USER_LABEL } from '@/lib/messaging-options';
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: `What ${APP_NAME} collects, who can see it, and how to delete it.`,
+  alternates: { canonical: '/privacy' },
 };
 
 export default function PrivacyPage() {

@@ -20,7 +20,10 @@ type SchoolPageProps = {
 
 export async function generateMetadata({ params }: SchoolPageProps): Promise<Metadata> {
   const school = await orNotFound(getActiveSchoolBySlug((await params).school));
-  return { title: `Subleases near ${school.name}` };
+  return {
+    title: `Subleases near ${school.name}`,
+    alternates: { canonical: `/${school.slug}` },
+  };
 }
 
 export default async function SchoolPage({ params, searchParams }: SchoolPageProps) {

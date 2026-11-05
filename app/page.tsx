@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,10 @@ import { APP_NAME } from '@/lib/app-config';
 import { getActor } from '@/server/auth/get-actor';
 import { listActiveSchools } from '@/server/services/schools';
 import { getOnboardingState } from '@/server/services/users';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
 export default async function HomePage() {
   const actor = await getActor();
