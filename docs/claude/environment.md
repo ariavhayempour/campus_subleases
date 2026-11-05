@@ -48,7 +48,10 @@ production.
   environment (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is what the browser subscription and the
   Realtime tests need).
 - `migrate.yml`: PRs touching `server/db/migrations/**` apply migrations to **staging**;
-  merges to `main` apply them to **production** (GitHub `production` environment).
+  merges to `main` apply them to **production** (GitHub `production` environment). It can also
+  be run by hand (Actions → Migrate → Run workflow, or
+  `gh workflow run migrate.yml --ref main -f target=staging|production`) to retry a run that
+  never started; run staging first.
 - Vercel's Git integration deploys previews and production independently, so a deploy can start
   before its migration finishes. Expand-then-contract migrations keep that window harmless.
 - Secrets are listed below.
