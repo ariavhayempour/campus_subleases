@@ -1,0 +1,130 @@
+import { and, countDistinct, eq, gt, or, sql } from 'drizzle-orm';
+import {
+  AUTO_HIDE_REPORTERS,
+  MAX_REPORTS_PER_DAY,
+  REPORT_DUPLICATE,
+  REPORT_RATE_LIMITED,
+  type ReportTargetType,
+} from '@/lib/moderation-options';
+import { isUuid } from '@/lib/validation/listing';
+import { reportInputSchema } from '@/lib/validation/moderation';
+import { db } from '@/server/db/client';
+import { conversations, listings, messages, reports, schools, users } from '@/server/db/schema';
+import { requireUser, type Actor } from './actor';
+import { writeAudit } from './audit';
+import { Conflict, NotFound, parseInput, RateLimited, ValidationError } from './errors';
+import { isPublicListing, noBlockWith } from './listing-sql';
+
+const selfError = (message: string): ValidationError =>
+  new ValidationError({ targetId: [message] });
+
+// Throws NotFound unless the reporter may see the target, and a field error for self-reports.
+async function assertReportable(
+  reporterId: string,
+  targetType: ReportTargetType,
+  targetId: string,
+): Promise<void> {
+  if (targetType === 'user') {
+    const [row] = await db().select({ id: users.id }).from(users).where(eq(users.id, targetId));
+    if (!row) throw new NotFound();
+    if (row.id === reporterId) throw selfError("You can't report yourself");
+    return;
+  }
+  if (!isUuid(targetId)) throw new NotFound();
+  if (targetType === 'listing') {
+    const [row] = await db()
+      .select({ ownerId: listings.ownerId })
+      .from(listings)
+      .innerJoin(schools, eq(schools.id, listings.schoolId))
+      .innerJoin(users, eq(users.id, listings.ownerId))
+      .where(
+        and(
+          eq(listings.id, targetId),
+          or(
+            and(isPublicListing, noBlockWith(reporterId)),
+            sql`exists (
+              select 1 from ${conversations}
+              where ${conversations.listingId} = ${listings.id}
+                and ${conversations.renterId} = ${reporterId}
+            )`,
+          ),
+        ),
+      );
+    if (!row) throw new NotFound();
+    if (row.ownerId === reporterId) throw selfError("You can't report your own listing");
+    return;
+  }
+  const [row] = await db()
+    .select({ senderId: messages.senderId })
+    .from(messages)
+    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+    .where(
+      and(
+        eq(messages.id, targetId),
+        or(eq(conversations.hostId, reporterId), eq(conversations.renterId, reporterId)),
+      ),
+    );
+  if (!row) throw new NotFound();
+  if (row.senderId === reporterId) throw selfError("You can't report your own message");
+}
+
+export async function createReport(
+  actor: Actor,
+  input: unknown,
+): Promise<{ id: string; autoHidden: boolean }> {
+  const { userId } = requireUser(actor);
+  const { targetType, targetId, reason, details } = parseInput(reportInputSchema, input);
+  await assertReportable(userId, targetType, targetId);
+
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('reports:' || ${userId}))`);
+    const [recent] = await tx
+      .select({ total: sql<number>`count(*)::int` })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.reporterId, userId),
+          gt(reports.createdAt, sql`now() - interval '24 hours'`),
+        ),
+      );
+    if (recent.total >= MAX_REPORTS_PER_DAY) throw new RateLimited(REPORT_RATE_LIMITED);
+
+    const [created] = await tx
+      .insert(reports)
+      .values({ reporterId: userId, targetType, targetId, reason, details })
+      .onConflictDoNothing()
+      .returning({ id: reports.id });
+    if (!created) throw new Conflict(REPORT_DUPLICATE);
+    if (targetType !== 'listing') return { id: created.id, autoHidden: false };
+
+    // Row lock serializes concurrent reports so exactly one sees the threshold crossed.
+    const [listing] = await tx
+      .select({ reviewStatus: listings.reviewStatus })
+      .from(listings)
+      .where(eq(listings.id, targetId))
+      .for('update');
+    if (listing?.reviewStatus !== 'approved') return { id: created.id, autoHidden: false };
+
+    const [{ reporters }] = await tx
+      .select({ reporters: countDistinct(reports.reporterId) })
+      .from(reports)
+      .innerJoin(listings, eq(listings.id, sql`${reports.targetId}::uuid`))
+      .where(
+        and(
+          eq(reports.targetType, 'listing'),
+          eq(reports.targetId, targetId),
+          gt(reports.createdAt, sql`coalesce(${listings.reviewedAt}, ${listings.createdAt})`),
+        ),
+      );
+    if (reporters < AUTO_HIDE_REPORTERS) return { id: created.id, autoHidden: false };
+
+    await tx.update(listings).set({ reviewStatus: 'hidden' }).where(eq(listings.id, targetId));
+    await writeAudit(tx, {
+      adminId: null,
+      action: 'auto_hid_listing',
+      targetType: 'listing',
+      targetId,
+    });
+    return { id: created.id, autoHidden: true };
+  });
+}

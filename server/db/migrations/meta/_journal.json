@@ -50,6 +50,13 @@
       "when": 1792006161494,
       "tag": "0006_realtime-user-channel-policy",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793852487472,
+      "tag": "0007_moderation-indexes",
+      "breakpoints": true
     }
   ]
 }

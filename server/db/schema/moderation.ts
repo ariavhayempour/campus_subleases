@@ -29,6 +29,7 @@ export const reports = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
+    index('reports_reporter').on(t.reporterId, t.createdAt),
     index('reports_queue').on(t.status, t.createdAt),
     index('reports_target').on(t.targetType, t.targetId, t.createdAt),
     uniqueIndex('reports_open_unique')
@@ -49,5 +50,8 @@ export const adminAuditLog = pgTable(
     snapshot: jsonb('snapshot'),
     createdAt: createdAt(),
   },
-  (t) => [index('admin_audit_log_created').on(t.createdAt)],
+  (t) => [
+    index('admin_audit_log_created').on(t.createdAt),
+    index('admin_audit_log_target').on(t.targetType, t.targetId, t.createdAt),
+  ],
 ).enableRLS();
