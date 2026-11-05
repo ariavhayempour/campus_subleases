@@ -76,3 +76,22 @@ export const resolveReportSchema = z.object({
     .min(1, 'Add a resolution note')
     .max(ADMIN_NOTE_MAX, 'Keep the note under 1,000 characters'),
 });
+
+const DAY_MS = 86_400_000;
+const MAX_RANGE_DAYS = 366;
+
+export const statsRangeSchema = z
+  .object({
+    from: z.iso.date({ error: 'Choose a date' }),
+    to: z.iso.date({ error: 'Choose a date' }),
+  })
+  .refine((range) => range.from <= range.to, {
+    path: ['to'],
+    error: 'The end date must be on or after the start date',
+  })
+  .refine(
+    (range) =>
+      range.from > range.to ||
+      (Date.parse(range.to) - Date.parse(range.from)) / DAY_MS + 1 <= MAX_RANGE_DAYS,
+    { path: ['to'], error: 'Choose a range of a year or less' },
+  );

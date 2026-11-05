@@ -64,3 +64,17 @@ export function formatMessageTime(iso: string, now: Date = new Date()): string {
       : dayTimeYear;
   return formatter.format(date).replace(/ /g, ' ');
 }
+
+export function formatDuration(seconds: number): string {
+  const total = Math.round(seconds);
+  if (total < 60) return `${total} s`;
+  const minutes = Math.floor(total / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ${minutes % 60} min`;
+  return `${Math.floor(hours / 24)} d ${hours % 24} h`;
+}
+
+export function formatPercent(part: number, whole: number): string {
+  return whole === 0 ? '—' : `${Math.round((part / whole) * 100)}%`;
+}
