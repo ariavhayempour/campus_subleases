@@ -11,8 +11,9 @@ Business rules live in `server/services/*`. Each exported function is shaped
 3. Permission and business checks — throw typed errors from `server/services/errors.ts`.
 4. Data access through `db()` only.
 
-Webhook-driven functions (`syncUserFromClerk`, `deleteUserFromClerk`) and `ensureUser` take no
-actor: they are system operations called only from the Clerk webhook and `getActor`.
+Webhook-driven functions (`syncUserFromClerk`, `deleteUserFromClerk`), `ensureUser`, and
+`sweepStaleStorage` take no actor: they are system operations called only from the Clerk webhook,
+`getActor`, and the cleanup cron route (which authenticates by `CRON_SECRET`).
 
 ## Service files
 
@@ -30,6 +31,8 @@ actor: they are system operations called only from the Clerk webhook and `getAct
   `admin-stats` (trial stats). See `admin.md`.
 - `locks`: `lockMessagingUsers`, sorted advisory locks shared by messaging, blocks, and ban.
 - `best-effort`: `bestEffort`, post-commit cleanup that reports failures to Sentry.
+- `storage-cleanup`: `sweepStaleStorage`, the daily sweep of stale uploads and unreferenced photos
+  (no actor; called only from the cron route). See `storage.md`.
 
 `server/clerk/users.ts` is not a service: it wraps the Clerk Backend API and is called only from
 services. Tests mock it (see `testing.md`).

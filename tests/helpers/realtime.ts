@@ -43,10 +43,13 @@ export function localRealtimeClient(userId: string): SupabaseClient {
   });
 }
 
+// The text Realtime sends when the channel policy denies a private join.
+const REFUSED_JOIN = /^Unauthorized: You do not have permissions to read from this Channel topic/;
+
 const broadcasts = new WeakMap<RealtimeChannel, Promise<unknown>>();
 
 type JoinOptions = {
-  // 'subscribed' rides out transient CHANNEL_ERRORs (the client rejoins); 'refused' settles on the first one.
+  // 'subscribed' rides out transient CHANNEL_ERRORs; 'refused' wants a policy denial first.
   expect?: 'subscribed' | 'refused';
   private?: boolean;
   timeoutMs?: number;
@@ -63,7 +66,7 @@ export async function joinChannel(
   options: JoinOptions = {},
 ): Promise<{ status: string; channel: RealtimeChannel }> {
   const { expect = 'subscribed', private: isPrivate = true, timeoutMs = 10_000 } = options;
-  // Push the user token to the socket before joining; otherwise the join carries the publishable key.
+  // Push the user token before joining; otherwise the join carries the publishable key.
   if (isPrivate) await client.realtime.setAuth();
   const channel = client.channel(topic, { config: { private: isPrivate } });
   broadcasts.set(
@@ -83,11 +86,14 @@ export async function joinChannel(
       clearTimeout(timer);
       fn();
     };
-    channel.subscribe((state) => {
+    channel.subscribe((state, error) => {
       if (state === 'SUBSCRIBED') done(() => resolve({ status: state, channel }));
       else if (state === 'CHANNEL_ERROR') {
-        lastError = state;
-        if (expect === 'refused') done(() => resolve({ status: state, channel }));
+        const cause = error ?? new Error(`Join of ${topic} failed with no error`);
+        lastError = cause.message;
+        if (expect !== 'refused') return;
+        if (REFUSED_JOIN.test(cause.message)) done(() => resolve({ status: state, channel }));
+        else done(() => reject(cause));
       } else if (state === 'CLOSED' || state === 'TIMED_OUT') {
         done(() => reject(new Error(`Join of ${topic} ended with ${state}`)));
       }
@@ -100,4 +106,15 @@ export function nextBroadcast(channel: RealtimeChannel): Promise<unknown> {
   const pending = broadcasts.get(channel);
   if (!pending) throw new Error('Channel was not created by joinChannel');
   return pending;
+}
+
+// Removes every client's channels even if one fails; the error names each failure.
+export async function removeClients(clients: SupabaseClient[]): Promise<void> {
+  const results = await Promise.allSettled(clients.map((client) => client.removeAllChannels()));
+  const reasons = results.flatMap((r) => (r.status === 'rejected' ? [r.reason as unknown] : []));
+  if (reasons.length === 0) return;
+  const messages = reasons.map((reason) =>
+    reason instanceof Error ? reason.message : String(reason),
+  );
+  throw new AggregateError(reasons, `Realtime cleanup failed: ${messages.join('; ')}`);
 }

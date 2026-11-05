@@ -8,6 +8,7 @@ import {
   joinChannel,
   localRealtimeClient,
   nextBroadcast,
+  removeClients,
 } from '../helpers/realtime';
 
 const event = (conversationId: string): RealtimeEvent => ({
@@ -32,7 +33,7 @@ const clientFor = (userId: string): SupabaseClient => {
 afterEach(async () => {
   vi.unstubAllEnvs();
   vi.resetModules();
-  await Promise.all(clients.splice(0).map((client) => client.removeAllChannels()));
+  await removeClients(clients.splice(0));
 });
 
 describe('publishToUser', () => {

@@ -13,17 +13,10 @@ import type { InboxRow } from '@/server/services/messaging-reads';
 export function InboxList({ items }: { items: InboxRow[] }) {
   const openId = useSelectedLayoutSegment();
   const router = useRouter();
-  const { onEvent, onResync } = useMessaging();
+  const { onEvent } = useMessaging();
 
-  useEffect(() => {
-    const refresh = () => router.refresh();
-    const offEvent = onEvent(refresh);
-    const offResync = onResync(refresh);
-    return () => {
-      offEvent();
-      offResync();
-    };
-  }, [onEvent, onResync, router]);
+  useEffect(() => onEvent(() => router.refresh()), [onEvent, router]);
+
   if (items.length === 0) {
     return (
       <p className="p-4 text-sm text-muted-foreground">

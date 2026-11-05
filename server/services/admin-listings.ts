@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { and, asc, count, desc, eq, sql, type SQL } from 'drizzle-orm';
 import type { ListingStatus, ReviewStatus } from '@/lib/listing-options';
 import {
@@ -193,20 +194,21 @@ export async function getAdminListing(actor: Actor, listingId: string): Promise<
   };
 }
 
-export async function getAdminCounts(
-  actor: Actor,
-): Promise<{ pendingListings: number; openReports: number }> {
-  requireAdmin(actor);
-  const [[pending], [open]] = await Promise.all([
-    db()
-      .select({ n: count() })
-      .from(listings)
-      .innerJoin(schools, eq(schools.id, listings.schoolId))
-      .where(pendingQueue),
-    db().select({ n: count() }).from(reports).where(eq(reports.status, 'open')),
-  ]);
-  return { pendingListings: pending.n, openReports: open.n };
-}
+// Cached per request so the header's two nav links and the page share one query run.
+export const getAdminCounts = cache(
+  async (actor: Actor): Promise<{ pendingListings: number; openReports: number }> => {
+    requireAdmin(actor);
+    const [[pending], [open]] = await Promise.all([
+      db()
+        .select({ n: count() })
+        .from(listings)
+        .innerJoin(schools, eq(schools.id, listings.schoolId))
+        .where(pendingQueue),
+      db().select({ n: count() }).from(reports).where(eq(reports.status, 'open')),
+    ]);
+    return { pendingListings: pending.n, openReports: open.n };
+  },
+);
 
 type Decision = {
   action: Extract<

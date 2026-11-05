@@ -20,9 +20,11 @@ bypasses RLS. `tests/db/harness.test.ts` enforces both facts for every table. Ne
 
 `realtime.messages` (Supabase's table behind Realtime) has exactly one policy, "users join their
 own channel": `for select to authenticated using (realtime.topic() = 'user:' || (select
-auth.jwt() ->> 'sub'))`. It was added by the custom migration `0006_realtime-user-channel-policy.sql`.
-`tests/db/realtime-policy.test.ts` pins it (exactly one policy on `realtime.messages`, command `SELECT`, role `authenticated`, and a
-`USING` expression containing the `'user:'` literal and `sub`), so a second policy fails the test. See `messaging.md`.
+auth.jwt() ->> 'sub'))`. It was added by the custom migration
+`0006_realtime-user-channel-policy.sql`.
+`tests/db/realtime-policy.test.ts` pins it (exactly one policy on `realtime.messages`, command
+`SELECT`, role `authenticated`, and a `USING` expression containing the `'user:'` literal and
+`sub`), so a second policy fails the test. See `messaging.md`.
 
 ## PostGIS
 
@@ -55,6 +57,18 @@ Migration `0007_moderation-indexes.sql` added two indexes:
 partial unique index `reports_open_unique` (reporter, target type, target id, where open) for
 duplicates. Report and audit `target_id` is text, so joins to uuid ids compare as text. Their user
 references are `ON DELETE SET NULL`, so deleting an account keeps the rows.
+
+## Listing photo positions
+
+`listing_photos` has a unique index `listing_photos_listing_position` (`listing_id`, `position`),
+added by `0008_listing-photo-position-unique.sql` (it replaces the non-unique
+`listing_photos_listing`). Listing saves delete all photo rows before re-inserting, so no reorder
+collides. Before applying to staging or production, check for duplicates; the migration fails if
+any exist:
+
+```sql
+select listing_id, position, count(*) from listing_photos group by 1,2 having count(*) > 1;
+```
 
 ## Conventions
 

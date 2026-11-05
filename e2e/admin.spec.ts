@@ -1,5 +1,5 @@
 import { setupClerkTestingToken } from '@clerk/testing/playwright';
-import { expect, test, type Browser, type BrowserContext } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import {
   approveListing,
   prepareHost,
@@ -24,6 +24,7 @@ let seededIds: string[] = [];
 let throwawayId = '';
 let contexts: BrowserContext[] = [];
 
+// The sweep logs its own failures, so a Clerk outage cannot fail every test here.
 test.beforeAll(async () => {
   if (process.env.CLERK_SECRET_KEY) await sweepThrowawayUsers();
 });
@@ -47,10 +48,12 @@ test.afterEach(async () => {
   ]);
   const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
   if (failures.length > 0) {
-    throw new AggregateError(
-      failures.map((f) => f.reason),
-      'cleanup failed',
-    );
+    const reasons = failures.map((f) => f.reason as unknown);
+    // A bare AggregateError reports only its own message, hiding which steps failed.
+    const messages = reasons.map((r) => (r instanceof Error ? r.message : String(r)));
+    throw new Error(`cleanup failed: ${messages.join('; ')}`, {
+      cause: new AggregateError(reasons, 'cleanup failed'),
+    });
   }
 });
 
@@ -62,6 +65,18 @@ async function signIn(browser: Browser, email: string) {
   const userId = await signInTestUser(page, email);
   await page.goto('/'); // Visiting a page lazily creates the users row.
   return { page, userId };
+}
+
+// LocalTime renders a blank placeholder until React hydrates; SSR buttons are already enabled.
+async function waitForHydration(page: Page): Promise<void> {
+  await expect(page.locator('main time').first()).toHaveText(/\S/, SLOW);
+}
+
+// Opens the listing's review page by id; the Pending tab lists only the oldest rows.
+async function openAdminListing(page: Page, listingId: string, title: string): Promise<void> {
+  await page.goto(`/admin/listings/${listingId}`);
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible(SLOW);
+  await waitForHydration(page);
 }
 
 function requireUsers() {
@@ -82,9 +97,8 @@ test('admin approves a pending listing', async ({ browser }) => {
   seededIds.push(listingId);
 
   const page = admin.page;
-  await page.goto('/admin/listings');
-  await page.getByRole('link', { name: title }).click();
-  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible(SLOW);
+  await openAdminListing(page, listingId, title);
+  await expect(page.getByText('Pending review', { exact: true })).toBeVisible(SLOW);
   await page.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0, SLOW);
 
@@ -112,11 +126,7 @@ test('admin rejects; the owner sees the reason, edits, and the listing is resubm
   seededIds.push(listingId);
 
   const adminPage = admin.page;
-  await adminPage.goto('/admin/listings');
-  await adminPage.getByRole('link', { name: 'Zebracorn reject me' }).click();
-  await expect(
-    adminPage.getByRole('heading', { level: 1, name: 'Zebracorn reject me' }),
-  ).toBeVisible(SLOW);
+  await openAdminListing(adminPage, listingId, 'Zebracorn reject me');
   await adminPage.getByLabel('Reason shown to the owner').fill(REJECT_NOTE);
   await adminPage.getByRole('button', { name: 'Reject', exact: true }).click();
   await expect(adminPage.getByRole('button', { name: 'Approve' })).toHaveCount(0, SLOW);
@@ -125,16 +135,17 @@ test('admin rejects; the owner sees the reason, edits, and the listing is resubm
 
   const hostPage = host.page;
   await hostPage.goto('/me/listings');
-  await expect(hostPage.getByText(`Rejected: ${REJECT_NOTE}`)).toBeVisible(SLOW);
+  await expect(hostPage.getByText(`Rejected: ${REJECT_NOTE}`, { exact: true })).toBeVisible(SLOW);
   await hostPage.getByRole('link', { name: 'Edit and resubmit' }).click();
   await expect(hostPage).toHaveURL(/\/edit$/, SLOW);
   await hostPage.getByLabel('Title').fill('Zebracorn resubmitted');
   await hostPage.getByRole('button', { name: 'Save changes' }).click();
   await expect(hostPage).toHaveURL(/\/me\/listings/, SLOW);
-  await expect(hostPage.getByText('Pending review')).toBeVisible(SLOW);
+  await expect(hostPage.getByText('Pending review', { exact: true })).toBeVisible(SLOW);
 
-  await adminPage.goto('/admin/listings?tab=pending');
-  await expect(adminPage.getByRole('link', { name: 'Zebracorn resubmitted' })).toBeVisible(SLOW);
+  await openAdminListing(adminPage, listingId, 'Zebracorn resubmitted');
+  await expect(adminPage.getByText('Pending review', { exact: true })).toBeVisible(SLOW);
+  await expect(adminPage.getByRole('button', { name: 'Approve' })).toBeVisible(SLOW);
 });
 
 test('a renter reports a listing and the admin resolves it', async ({ browser }) => {
@@ -175,6 +186,7 @@ test('a renter reports a listing and the admin resolves it', async ({ browser })
   await expect(page).toHaveURL(/\/admin\/reports\/[0-9a-f-]{36}$/, SLOW);
   const reportId = page.url().split('/').pop() ?? '';
   await expect(page.getByText('Asked for a deposit by wire')).toBeVisible(SLOW);
+  await waitForHydration(page);
   await page.getByLabel('Resolution note').fill('Talked to the host');
   await page.getByRole('button', { name: 'Resolve', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Resolution' })).toBeVisible(SLOW);

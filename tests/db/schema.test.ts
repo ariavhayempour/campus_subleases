@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { db, rootDb } from '@/server/db/client';
 import { blocks, listings, messages, conversations, reports } from '@/server/db/schema';
 import { catchDbError, withRollback } from '../helpers/db';
-import { createSchool, createUser, listingValues } from '../helpers/fixtures';
+import {
+  createSchool,
+  createUser,
+  insertListing,
+  insertPhoto,
+  listingValues,
+} from '../helpers/fixtures';
 
 const EXPECTED_TABLES = [
   'admin_audit_log',
@@ -91,6 +97,17 @@ describe('schema', () => {
         .set({ status: 'resolved' })
         .where(and(eq(reports.reporterId, reporter.id), eq(reports.targetId, 'user_x')));
       await db().insert(reports).values(report);
+    }));
+
+  it('allows one photo per position in a listing', () =>
+    withRollback(async () => {
+      const owner = await createUser();
+      const school = await createSchool();
+      const listing = await insertListing(owner.id, school.id);
+      await insertPhoto(listing.id, 0);
+      await insertPhoto(listing.id, 1);
+      const error = await catchDbError(() => insertPhoto(listing.id, 0, `${listing.id}/dup`));
+      expect(error).toContain('listing_photos_listing_position');
     }));
 
   it('forbids blocking yourself', () =>

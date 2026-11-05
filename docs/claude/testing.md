@@ -36,14 +36,16 @@
   fail the send. Fixtures: `tests/helpers/messaging.ts` (`liveListing`, `insertConversation`,
   `insertMessage`).
 - **Realtime integration tests** (`tests/realtime/publish.test.ts`) use the real local Realtime
-  service, so `supabase start` must include it (CI no longer excludes it). `tests/helpers/realtime.ts`
-  reads the URL, publishable key, and JWT secret from `supabase status`, refuses non-local hosts,
-  and signs a short-lived HS256 token locally (claims `sub`, `role: authenticated`) with
-  `node:crypto`, standing in for a Clerk token. They cover delivery to the owner of a channel,
-  refusal to join another user's channel, no delivery to public (anonymous or other-user) subscriptions of a user channel, publishing with no subscriber, and the unreachable-host
-  error. A client must call `realtime.setAuth()` before joining a private channel. `joinChannel`
-  waits through transient `CHANNEL_ERROR`s until `SUBSCRIBED` (rejects on `CLOSED`, `TIMED_OUT`, or a
-  10 s deadline); tests expecting refusal pass `{ expect: 'refused' }`.
+  service, so `supabase start` must include it (CI no longer excludes it).
+  `tests/helpers/realtime.ts` reads the URL, publishable key, and JWT secret from
+  `supabase status`, refuses non-local hosts, and signs a short-lived HS256 token locally (claims
+  `sub`, `role: authenticated`) with `node:crypto`, standing in for a Clerk token. They cover
+  delivery to the owner of a channel, refusal to join another user's channel, no delivery to
+  public (anonymous or other-user) subscriptions of a user channel, publishing with no subscriber,
+  and the unreachable-host error. A client must call `realtime.setAuth()` before joining a private
+  channel. `joinChannel` waits through transient `CHANNEL_ERROR`s until `SUBSCRIBED` (rejects on
+  `CLOSED`, `TIMED_OUT`, or a 10 s deadline); tests expecting refusal pass
+  `{ expect: 'refused' }`.
 - **Policy test:** `tests/db/realtime-policy.test.ts` (see `database.md`).
 
 ## Storage
@@ -60,7 +62,12 @@
   constraint matching the ON CONFLICT specification"). The storage schema on a long-lived local
   volume has likely drifted from the storage-api image. Local-only workaround (run as
   `supabase_admin`):
-  `create unique index idx_objects_current_version_c on storage.objects (bucket_id, name collate "C") where archived_at is null`.
+
+  ```sql
+  create unique index idx_objects_current_version_c
+    on storage.objects (bucket_id, name collate "C") where archived_at is null;
+  ```
+
   Clean alternative that wipes local data: `supabase stop --no-backup && pnpm db:start`.
 
 ## E2E (Playwright)
@@ -87,8 +94,14 @@
 - `seedBrowseListings` takes an optional `description`; a listing seeded without "Zebracorn" in
   its title or description proves a keyword filter is carried (e.g. by "Load more").
 - `signInThroughForm()` fills Clerk's `<SignIn />` form on the current page (email, "Use another
-  method", email code `424242`), for tests that must prove Clerk's return redirect. It depends on
-  Clerk's button labels; `setupClerkTestingToken({ page })` must run first.
+  method", email code `424242`), for tests that must prove Clerk's return redirect.
+  `setupClerkTestingToken({ page })` must run first. Each control is found by an attribute first
+  and by its accessible name as the one fallback (`.or(...).first()`): the identifier by
+  `input[name="identifier"]`, Continue by the form's visible `button[type="submit"]` (Clerk's
+  form also holds a hidden `aria-hidden` submit button), the code by
+  `input[autocomplete="one-time-code"]`, and the two links/buttons with no name or type by Clerk's
+  `data-localization-key` (`signIn.password.actionLink`,
+  `signIn.alternativeMethods.blockButton__emailCode`).
 - CI has no Mapbox token, so E2E never asserts on the map.
 - Playwright keeps traces on failure (`trace: 'retain-on-failure'`); CI retries once.
 - **Two-user messaging E2E** (`e2e/messaging.spec.ts`): host and renter sign in with
@@ -105,22 +118,43 @@
 - **Admin E2E** (`e2e/admin.spec.ts`): a third dev-instance user, `E2E_CLERK_ADMIN_EMAIL`, has
   `publicMetadata.role = "admin"`. Two tests cover "admin approves" (the row moves to the Approved
   tab and a signed-out page loads the listing) and "admin rejects, the owner sees the reason, edits
-  and resubmits" (the badge returns to "Pending review" and the listing is back in Pending). Listings
-  are seeded by SQL; `seedListing(..., { withPhoto: true })` adds one `listing_photos` row so the
-  edit form's 1-photo minimum passes. `removeAudit(listingIds)` deletes the audit rows the admin
-  actions wrote. Without either email the tests skip locally and fail in CI.
-  Two more tests cover moderation: "a renter reports a listing and the admin resolves it"
-  (needs `E2E_CLERK_USER2_EMAIL` too; checks the duplicate-report message, the Resolved status, the
-  Open filter, and the audit row) and "the admin bans and unbans a user". The ban test creates a
-  throwaway Clerk user per run with `createThrowawayUser()` (`e2e/helpers/moderation.ts`, Backend
-  API over `fetch` with `CLERK_SECRET_KEY`, because `@clerk/nextjs/server` does not load under
-  Playwright), plus its `users` row, and asserts `banned` on the Clerk side after each action.
-  `afterEach` always runs `deleteThrowawayUser(id)` (a Clerk 404 counts as done) and
-  `removeReports(targetIds)`, which is limited to the test's own listing ids and the throwaway user
-  id. The helpers refuse to run unless `CLERK_SECRET_KEY` starts with `sk_test_`, and only delete a
-  Clerk user whose primary email matches `e2e-ban-<12 hex>+clerk_test@example.com` and whose
-  `private_metadata.e2eThrowaway` is true. A `beforeAll` sweep (`sweepThrowawayUsers`) removes such
-  users left by killed runs, re-checking each result because Clerk's `query` is fuzzy. The report
-  test skips locally without `E2E_CLERK_USER2_EMAIL`, and the ban test without `CLERK_SECRET_KEY`;
-  both fail in CI.
+  and resubmits" (the badge returns to "Pending review" and the admin page shows it pending again,
+  with Approve). Listings are seeded by SQL; `seedListing(..., { withPhoto: true })` adds one
+  `listing_photos` row so the edit form's 1-photo minimum passes. `removeAudit(listingIds)`
+  deletes the audit rows the admin actions wrote. Without either email the tests skip locally and
+  fail in CI.
+- **Admin pages are opened by id** (`/admin/listings/<id>`), never found by scanning the Pending
+  tab: that tab lists the oldest 100 pending rows first, so a fresh listing can fall off it. The
+  Approved and Rejected tabs sort newest first, so the tests still check those.
+- **Hydration wait:** before filling or clicking on an admin page, `waitForHydration` waits for the
+  first `<time>` in `main` to have text. `LocalTime` renders a blank placeholder until React has
+  hydrated, and the admin listing and report pages always show one. Waiting for an enabled button
+  does not work here: the server-rendered buttons are already enabled, and a value typed before
+  hydration never reaches React's state.
+- Badge and status assertions use `{ exact: true }` ("Pending review", "Rejected: <note>",
+  "Active", "Banned").
+- **Moderation tests:** "a renter reports a listing and the admin resolves it" (needs
+  `E2E_CLERK_USER2_EMAIL` too; checks the duplicate-report message, the Resolved status, the Open
+  filter, and the audit row) and "the admin bans and unbans a user". The report test skips
+  locally without `E2E_CLERK_USER2_EMAIL`, and the ban test without `CLERK_SECRET_KEY`; both fail
+  in CI.
+- **Throwaway Clerk users** (`e2e/helpers/moderation.ts`): the ban test creates one with
+  `createThrowawayUser()`, plus its `users` row, and asserts `banned` on the Clerk side after each
+  action. The helpers use the Backend API over `fetch` with `CLERK_SECRET_KEY`, because
+  `@clerk/nextjs/server` does not load under Playwright, and refuse to run unless the key starts
+  with `sk_test_`.
+  - **Naming:** `e2e-throwaway-<runId>-<12 hex>+clerk_test@example.com`, with
+    `private_metadata.e2eThrowaway = true`. A Clerk user is deleted only if both match. `runId` is
+    8 hex characters that `e2e/global-setup.ts` puts in `E2E_RUN_ID` once per Playwright run, so
+    every worker and retry shares it. It is internal; nothing needs to set it.
+  - **Sweep:** a `beforeAll` runs `sweepThrowawayUsers()`. It lists Clerk users matching
+    `e2e-throwaway-` (oldest first, up to 100), re-checks each one because Clerk's `query` is
+    fuzzy, and deletes only throwaways from this run or created over an hour ago. A concurrent
+    CI or local run never loses a user mid-test. A sweep failure is logged and the tests carry on.
+  - **Cleanup:** `afterEach` runs `deleteThrowawayUser(id)` and `removeReports(targetIds)`, which
+    is limited to the test's own listing ids and the throwaway user id. `deleteThrowawayUser`
+    deletes the Clerk user first (a 404 counts as done), then its `users`, report, and audit rows.
+    If Clerk refuses the delete (an API error, or the user is not a throwaway), it logs the failure
+    and keeps the rows, so nothing local is removed for a user that still exists; the next sweep
+    retries it.
 - Default project is desktop Chrome (the site is desktop-first).

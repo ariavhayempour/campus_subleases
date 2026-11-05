@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { LocalTime } from '@/app/_components/local-time';
 import { ACTION_LABELS, summarizeSnapshot } from '@/lib/audit-labels';
+import { auditActorLabel } from '@/lib/moderation-options';
 import type { AuditEntry } from '@/server/services/audit';
 
 const TARGET_PATHS: Record<string, string> = {
@@ -41,7 +42,7 @@ export function AuditTable({ entries }: { entries: AuditEntry[] }) {
             <td className="py-2 pr-4 whitespace-nowrap">
               <LocalTime iso={entry.createdAt.toISOString()} />
             </td>
-            <td className="py-2 pr-4">{entry.adminName ?? 'System'}</td>
+            <td className="py-2 pr-4">{auditActorLabel(entry)}</td>
             <td className="py-2 pr-4">{ACTION_LABELS[entry.action]}</td>
             <td className="py-2 pr-4">
               <AuditTargetLink entry={entry} />

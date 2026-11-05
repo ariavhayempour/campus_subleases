@@ -323,6 +323,36 @@ describe('auto-hide', () => {
     });
   });
 
+  it('ignores reports filed before reviewed_at and hides at 3 new distinct reporters', async () => {
+    await withRollback(async () => {
+      const { listing } = await liveListing();
+      await db()
+        .update(listings)
+        .set({
+          createdAt: new Date(Date.now() - 2 * HOUR),
+          reviewedAt: new Date(Date.now() - HOUR / 2),
+        })
+        .where(eq(listings.id, listing.id));
+      for (let i = 0; i < 2; i += 1) {
+        await insertReport({
+          reporterId: (await createUser()).id,
+          targetType: 'listing',
+          targetId: listing.id,
+          createdAt: new Date(Date.now() - HOUR),
+        });
+      }
+      const [a, b, c] = [await createUser(), await createUser(), await createUser()];
+      expect((await reportListing(a.id, listing.id)).autoHidden).toBe(false);
+      expect((await reportListing(b.id, listing.id)).autoHidden).toBe(false);
+      const [still] = await db().select().from(listings).where(eq(listings.id, listing.id));
+      expect(still.reviewStatus).toBe('approved');
+      expect((await reportListing(c.id, listing.id)).autoHidden).toBe(true);
+      const [hidden] = await db().select().from(listings).where(eq(listings.id, listing.id));
+      expect(hidden.reviewStatus).toBe('hidden');
+      expect((await auditRows(listing.id)).map((row) => row.action)).toEqual(['auto_hid_listing']);
+    });
+  });
+
   it('does not auto-hide pending listings and never hides users', async () => {
     await withRollback(async () => {
       const { owner, school } = await liveListing();

@@ -1,6 +1,6 @@
 import { setupClerkTestingToken } from '@clerk/testing/playwright';
-import { expect, test } from '@playwright/test';
-import { removeBrowseHost, seedBrowseListings } from './helpers/browse';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { BROWSE_BBOX, removeBrowseHost, seedBrowseListings } from './helpers/browse';
 import { prepareHost } from './helpers/listings';
 import { signInTestUser, signInThroughForm, testUserEmail } from './helpers/sign-in';
 
@@ -19,7 +19,7 @@ test('visitors filter and sort listings, and the unit never reaches the page', a
   expect(await response?.text()).not.toContain('ZQ-41');
   await expect(page.getByText('2 listings', { exact: true })).toBeVisible();
 
-  const titles = page.getByRole('article').getByRole('heading', { level: 3 });
+  const titles = page.getByRole('article').getByRole('heading', { level: 2 });
   await page.getByLabel('Sort by').selectOption('rent_desc');
   await expect(page).toHaveURL(/sort=rent_desc/);
   await expect(titles).toHaveText(['Zebracorn deluxe loft', 'Zebracorn budget room']);
@@ -43,7 +43,7 @@ test('visitors filter and sort listings, and the unit never reaches the page', a
 test('signed-out visitors are sent to sign in when saving', async ({ page }) => {
   await seedBrowseListings([{ title: 'Zebracorn cozy studio', rentCents: 90_000 }]);
   await page.goto(SCOPE);
-  await page.getByRole('article').getByRole('button', { name: 'Save listing' }).click();
+  await page.getByRole('button', { name: 'Save “Zebracorn cozy studio”' }).click();
   await expect(page).toHaveURL(/\/sign-in/);
 });
 
@@ -54,7 +54,7 @@ test('signing in from a save returns to the filtered browse page', async ({ page
   await seedBrowseListings([{ title: 'Zebracorn cozy studio', rentCents: 90_000 }]);
   await setupClerkTestingToken({ page });
   await page.goto(SCOPE);
-  await page.getByRole('article').getByRole('button', { name: 'Save listing' }).click();
+  await page.getByRole('button', { name: 'Save “Zebracorn cozy studio”' }).click();
   await expect(page).toHaveURL(/\/sign-in/);
   await signInThroughForm(page);
   await expect(page).toHaveURL(SCOPE);
@@ -78,7 +78,7 @@ test('"Load more" appends the next page of the same search', async ({ page }) =>
   await expect(page.getByRole('article')).toHaveCount(24);
   await page.getByRole('button', { name: 'Load more' }).click();
   await expect(page.getByRole('article')).toHaveCount(25);
-  await expect(page.getByRole('article').last().getByRole('heading', { level: 3 })).toHaveText(
+  await expect(page.getByRole('article').last().getByRole('heading', { level: 2 })).toHaveText(
     'Zebracorn studio 25',
   );
   await expect(page.getByText('Plain attic room')).toHaveCount(0);
@@ -107,17 +107,57 @@ test('a signed-in student saves a listing and unsaves it from Saved', async ({ p
   await prepareHost(userId, 'uw-madison');
 
   await page.goto(SCOPE);
-  const save = page
-    .getByRole('article')
-    .filter({ hasText: 'Zebracorn saved studio' })
-    .getByRole('button', { name: 'Save listing' });
-  await save.click();
-  await expect(save).toHaveAttribute('aria-pressed', 'true');
-  await expect(save).toBeEnabled(); // the server action has finished
+  const tile = page.getByRole('article').filter({ hasText: 'Zebracorn saved studio' });
+  await tile.getByRole('button', { name: 'Save “Zebracorn saved studio”' }).click();
+  const remove = tile.getByRole('button', { name: 'Remove “Zebracorn saved studio” from saved' });
+  await expect(remove).toBeEnabled(); // the server action has finished
 
   await page.goto('/me/favorites');
   const saved = page.getByRole('article').filter({ hasText: 'Zebracorn saved studio' });
   await expect(saved).toBeVisible();
-  await saved.getByRole('button', { name: 'Save listing' }).click();
+  await saved.getByRole('button', { name: 'Remove “Zebracorn saved studio” from saved' }).click();
   await expect(saved).toHaveCount(0);
+});
+
+test('tile hearts are named per listing', async ({ page }) => {
+  await seedBrowseListings([{ title: 'Zebracorn named studio', rentCents: 90_000 }]);
+  await page.goto(SCOPE);
+  await expect(
+    page.getByRole('article').getByRole('button', { name: 'Save “Zebracorn named studio”' }),
+  ).toBeVisible();
+});
+
+// Without a Mapbox token (CI) the map pane shows "Map unavailable" instead of a map.
+const mapPane = (page: Page): Locator =>
+  page.locator('.mapboxgl-map').or(page.getByText('Map unavailable'));
+
+test('the desktop map stays mounted when the window narrows to phone width', async ({ page }) => {
+  await seedBrowseListings([{ title: 'Zebracorn resize studio', rentCents: 90_000 }]);
+  await page.goto(SCOPE);
+  await expect(mapPane(page)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Show map' })).toBeVisible();
+  await expect(mapPane(page)).toHaveCount(1);
+});
+
+test.describe('at phone width', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('phone does not load the map until Show map', async ({ page }) => {
+    await seedBrowseListings([{ title: 'Zebracorn phone studio', rentCents: 90_000 }]);
+    await page.goto(SCOPE);
+    await expect(page.getByRole('article')).toHaveCount(1);
+    await page.waitForLoadState('networkidle');
+    await expect(mapPane(page)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show map' }).click();
+    await expect(mapPane(page)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Show list' })).toBeVisible();
+  });
+
+  test('phone opens a bbox link on the map', async ({ page }) => {
+    await seedBrowseListings([{ title: 'Zebracorn phone studio', rentCents: 90_000 }]);
+    await page.goto(`${SCOPE}&bbox=${BROWSE_BBOX}`);
+    await expect(mapPane(page)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Show list' })).toBeVisible();
+  });
 });

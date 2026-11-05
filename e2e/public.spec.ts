@@ -15,3 +15,14 @@ test('unknown school slugs 404', async ({ page }) => {
   expect(response?.status()).toBe(404);
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
 });
+
+test('a school page with a query string canonicalizes to the bare school URL', async ({
+  page,
+  baseURL,
+}) => {
+  await page.goto('/umich?q=test');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    `${new URL(baseURL ?? 'http://localhost:3000').origin}/umich`,
+  );
+});

@@ -7,6 +7,7 @@ import { orAdminNotFound, requireAdminPage } from '@/app/_lib/guards';
 import { ACTION_LABELS, summarizeSnapshot } from '@/lib/audit-labels';
 import { formatMonthYear } from '@/lib/format';
 import {
+  auditActorLabel,
   REPORT_REASON_LABELS,
   REPORT_STATUS_LABELS,
   REVIEW_STATUS_LABELS,
@@ -101,7 +102,7 @@ export default async function AdminUserPage({ params }: AdminUserPageProps) {
             {user.conversations.map((conversation) => (
               <li key={conversation.id}>
                 <Link
-                  href={`/admin/conversations/${conversation.id}`}
+                  href={`/admin/conversations/${conversation.id}?from=user:${user.id}`}
                   prefetch={false}
                   className="underline"
                 >
@@ -136,7 +137,7 @@ export default async function AdminUserPage({ params }: AdminUserPageProps) {
             {user.history.map((entry) => (
               <li key={entry.id}>
                 <LocalTime iso={entry.createdAt.toISOString()} /> · {ACTION_LABELS[entry.action]} by{' '}
-                {entry.adminName ?? 'System'}
+                {auditActorLabel(entry)}
                 {entry.snapshot ? ` (${summarizeSnapshot(entry.snapshot)})` : ''}
               </li>
             ))}

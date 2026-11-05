@@ -1,20 +1,19 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { unblockUserAction } from '../actions';
+import { useRefreshAfter } from './use-refresh-after';
 
 export function UnblockNotice({ otherUserId }: { otherUserId: string }) {
-  const router = useRouter();
+  const refreshAfter = useRefreshAfter();
   const [pending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
 
   function unblock() {
     setFailed(false);
     startTransition(async () => {
-      const result = await unblockUserAction(otherUserId).catch(() => null);
-      if (result?.ok) router.refresh();
-      else setFailed(true);
+      const result = await refreshAfter(() => unblockUserAction(otherUserId)).catch(() => null);
+      if (!result?.ok) setFailed(true);
     });
   }
 

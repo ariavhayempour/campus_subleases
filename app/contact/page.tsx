@@ -7,6 +7,7 @@ import { ContactForm } from './contact-form';
 export const metadata: Metadata = {
   title: 'Contact',
   description: `Send a message to the ${APP_NAME} team.`,
+  alternates: { canonical: '/contact' },
 };
 
 export default function ContactPage() {

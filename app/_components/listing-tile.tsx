@@ -22,6 +22,8 @@ export function ListingTile({ card, signedIn, onHover }: ListingTileProps) {
       <Link
         href={`/${card.schoolSlug}/listings/${card.id}`}
         className="block rounded-xl focus-visible:outline-2"
+        onFocus={onHover && (() => onHover(card.id))}
+        onBlur={onHover && (() => onHover(null))}
       >
         <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted">
           {card.coverThumbUrl && (
@@ -36,7 +38,7 @@ export function ListingTile({ card, signedIn, onHover }: ListingTileProps) {
         </div>
         <div className="mt-2 space-y-0.5">
           <p className="font-semibold">{formatRent(card.rentCents)}</p>
-          <h3 className="truncate font-medium group-hover:underline">{card.title}</h3>
+          <h2 className="truncate font-medium group-hover:underline">{card.title}</h2>
           <p className="text-sm text-muted-foreground">
             {LISTING_TYPE_LABELS[card.type]} · {rooms} · {card.bathrooms} bath
           </p>
@@ -48,6 +50,7 @@ export function ListingTile({ card, signedIn, onHover }: ListingTileProps) {
       </Link>
       <FavoriteButton
         listingId={card.id}
+        listingTitle={card.title}
         initialFavorited={card.isFavorited}
         signedIn={signedIn}
         className="absolute right-2 top-2"

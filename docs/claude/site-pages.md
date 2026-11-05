@@ -15,12 +15,21 @@ All four are static, public, and indexable. They share `app/_components/static-p
 optional "Last updated" line, and prose styling for `h2`, `p`, `ul`, `a`). The slugs are already
 in `lib/reserved-slugs.ts`, so no school can take them.
 
-**Policy copy** covers what the spec requires the Terms and Privacy Policy to disclose, and the owner
-chose an 18+ minimum age. The copy is a plain-language draft, not legal advice: have it reviewed
-before launch, and update the "Last updated" date with every change. When behaviour changes
+**Policy copy** covers what the spec requires the Terms and Privacy Policy to disclose, and the
+owner chose an 18+ minimum age. The copy is a plain-language draft, not legal advice: have it
+reviewed before launch, and update the "Last updated" date with every change. When behaviour changes
 (what is stored, who sees it, what deletion removes, which providers are used), update
 `app/privacy/page.tsx` in the same PR. The safety tip and the "Deleted user" label are read from
 `lib/messaging-options.ts` so they match the messaging UI.
+
+## Canonical URLs
+
+The root layout sets `metadataBase` from `siteUrl()`, so relative metadata URLs
+(such as canonical) resolve to absolute ones, and Next does not warn at build about a missing
+`metadataBase`. `/`, the four static pages, and
+`/{school}` each set `alternates.canonical` to their own path; `/{school}` drops the query string,
+so filtered views do not compete with the bare browse page. Tested in `tests/app/canonical.test.ts`
+and `e2e/public.spec.ts`.
 
 ## Footer
 
@@ -45,7 +54,8 @@ access key. No server code, dependency, or environment variable is involved.
   (so local and preview submissions also reach the owner's inbox). Messages go to the email the key
   was created with; change that in the Web3Forms dashboard, or swap the key. With an empty key the
   form refuses to send and says it is not set up.
-- **Validation:** `lib/validation/contact.ts` (name 1–100, email, message 10–5,000; all trimmed),
+- **Validation:** `lib/validation/contact.ts` (name 1–100, email, message 10–5,000; all
+  trimmed),
   used by the form through `zodResolver`.
 - **Payload:** `access_key`, a fixed `subject` and `from_name` naming `APP_NAME`, and the visitor's
   `name`, `email` (Web3Forms uses it as reply-to), and `message`.
@@ -69,8 +79,8 @@ falls back to `http://localhost:3000` when unset.
   tag, and a crawler can only read that tag if it may fetch the page. Disallowing them could still
   let their bare URLs be indexed from outside links.
 - **sitemap.xml** lists `/`, every active school's browse page, and the four static pages. It has
-  no listing URLs. It reads schools from the database, so it is `force-dynamic` (rendered per request)
-  to keep `next build` free of a database dependency.
+  no listing URLs. It reads schools from the database, so it is `force-dynamic` (rendered
+  per request) to keep `next build` free of a database dependency.
 
 Vercel adds `X-Robots-Tag: noindex` to every preview deployment, so the same robots file is safe in
 every environment. Exception: if a custom domain (e.g. a staging subdomain) is ever assigned to a

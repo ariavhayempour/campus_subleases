@@ -4,6 +4,7 @@ import { LOCAL_DATABASE_URL } from '../../tests/local-db';
 
 const FIRST_NAME = 'Throwaway';
 const LAST_NAME = 'Banned';
+const STALE_AFTER_MS = 60 * 60 * 1000;
 
 function connect(): postgres.Sql {
   return postgres(process.env.DATABASE_URL ?? LOCAL_DATABASE_URL, { max: 1, prepare: false });
@@ -12,12 +13,17 @@ function connect(): postgres.Sql {
 type ClerkUser = {
   id: string;
   banned: boolean;
+  created_at: number;
   primary_email_address_id: string | null;
   email_addresses: { id: string; email_address: string }[];
   private_metadata: Record<string, unknown>;
 };
 
-const THROWAWAY_EMAIL = /^e2e-ban-[0-9a-f]{12}\+clerk_test@example\.com$/;
+const envRunId = process.env.E2E_RUN_ID ?? '';
+// Global setup shares one id with every worker; the fallback only covers a run without it.
+const RUN_ID = /^[0-9a-f]{8}$/.test(envRunId) ? envRunId : randomBytes(4).toString('hex');
+
+const THROWAWAY_EMAIL = /^e2e-throwaway-([0-9a-f]{8})-[0-9a-f]{12}\+clerk_test@example\.com$/;
 
 // Plain fetch: @clerk/nextjs/server does not load under Playwright's module resolver.
 async function clerkApi<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -48,7 +54,7 @@ export function getClerkUser(id: string): Promise<ClerkUser> {
 export async function createThrowawayUser(): Promise<{ id: string; displayName: string }> {
   const tag = randomBytes(6).toString('hex');
   const clerkUser = await clerkApi<ClerkUser>('POST', '/users', {
-    email_address: [`e2e-ban-${tag}+clerk_test@example.com`],
+    email_address: [`e2e-throwaway-${RUN_ID}-${tag}+clerk_test@example.com`],
     first_name: FIRST_NAME,
     last_name: LAST_NAME,
     password: randomBytes(24).toString('base64url'),
@@ -65,7 +71,7 @@ export async function createThrowawayUser(): Promise<{ id: string; displayName: 
       )
       on conflict (id) do nothing`;
   } catch (error) {
-    await deleteThrowawayUser(clerkUser.id);
+    await deleteThrowawayUser(clerkUser.id).catch(() => undefined);
     throw error;
   } finally {
     await sql.end();
@@ -73,13 +79,11 @@ export async function createThrowawayUser(): Promise<{ id: string; displayName: 
   return { id: clerkUser.id, displayName };
 }
 
-// True only for users this helper created: the generated email and the private marker.
-function isThrowaway(user: ClerkUser): boolean {
+// The run id of a user this helper created (generated email plus private marker), else null.
+function throwawayRunId(user: ClerkUser): string | null {
   const primary = user.email_addresses.find((e) => e.id === user.primary_email_address_id);
-  return (
-    THROWAWAY_EMAIL.test(primary?.email_address ?? '') &&
-    user.private_metadata.e2eThrowaway === true
-  );
+  const match = THROWAWAY_EMAIL.exec(primary?.email_address ?? '');
+  return match && user.private_metadata.e2eThrowaway === true ? match[1] : null;
 }
 
 async function deleteClerkThrowaway(id: string): Promise<void> {
@@ -90,7 +94,9 @@ async function deleteClerkThrowaway(id: string): Promise<void> {
     if ((error as { status?: number }).status === 404) return;
     throw error;
   }
-  if (!isThrowaway(user)) throw new Error(`Refusing to delete non-throwaway Clerk user ${id}`);
+  if (throwawayRunId(user) === null) {
+    throw new Error(`Refusing to delete non-throwaway Clerk user ${id}`);
+  }
   try {
     await clerkApi('DELETE', `/users/${id}`);
   } catch (error) {
@@ -110,20 +116,41 @@ async function removeUserRows(ids: string[]): Promise<void> {
   }
 }
 
-// Removes the Clerk user (a missing user counts as done), its row, and the audit rows about it.
+// Deletes the Clerk user (a missing one counts as done), then its rows and the audit rows about it.
 export async function deleteThrowawayUser(id: string): Promise<void> {
   try {
     await deleteClerkThrowaway(id);
-  } finally {
-    await removeUserRows([id]);
+  } catch (error) {
+    // Rows stay while the Clerk user exists; the next sweep finds it via Clerk and deletes both.
+    console.warn(`Clerk delete of throwaway ${id} failed; rows kept for the next sweep.`, error);
+    return;
   }
+  await removeUserRows([id]);
 }
 
-// Deletes throwaway users left by killed runs; Clerk's query is fuzzy, so results are re-checked.
+// Deletes this run's throwaways and any older than an hour, so concurrent runs keep theirs.
 export async function sweepThrowawayUsers(): Promise<void> {
-  const users = await clerkApi<ClerkUser[]>('GET', '/users?query=e2e-ban-&limit=100');
-  const stale = users.filter(isThrowaway).map((u) => u.id);
-  for (const id of stale) await deleteThrowawayUser(id);
+  let users: ClerkUser[];
+  try {
+    // Oldest first so stale users fill the page; Clerk's query is fuzzy, so results are re-checked.
+    users = await clerkApi<ClerkUser[]>(
+      'GET',
+      '/users?query=e2e-throwaway-&order_by=%2Bcreated_at&limit=100',
+    );
+  } catch (error) {
+    console.warn('Throwaway sweep could not list Clerk users; skipping it.', error);
+    return;
+  }
+  const cutoff = Date.now() - STALE_AFTER_MS;
+  for (const user of users) {
+    const runId = throwawayRunId(user);
+    if (runId === null || (runId !== RUN_ID && user.created_at >= cutoff)) continue;
+    try {
+      await deleteThrowawayUser(user.id);
+    } catch (error) {
+      console.warn(`Throwaway sweep could not remove ${user.id}; continuing.`, error);
+    }
+  }
 }
 
 // Deletes reports about this test's targets (listing ids, the throwaway user id) and their audit rows.

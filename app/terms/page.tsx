@@ -6,6 +6,7 @@ import { APP_NAME } from '@/lib/app-config';
 export const metadata: Metadata = {
   title: 'Terms of Use',
   description: `The rules for using ${APP_NAME}.`,
+  alternates: { canonical: '/terms' },
 };
 
 export default function TermsPage() {
@@ -39,11 +40,6 @@ export default function TermsPage() {
         <li>
           Every listing is reviewed before it appears. We may reject, hide, or remove any listing at
           our discretion, including after it has been approved.
-        </li>
-        <li>
-          Listings must not contain discriminatory language. A gender preference is allowed only for
-          shared living spaces, such as a room in a shared apartment or a place with roommates who
-          are staying.
         </li>
         <li>
           You keep ownership of what you post. You give us permission to store, display, and resize

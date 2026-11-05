@@ -34,16 +34,16 @@
   transaction, which takes a per-owner advisory lock (`pg_advisory_xact_lock`) so concurrent
   saves cannot both pass. Status changes (reactivation) run the same locked check.
 - **Known gap:** the 5/day limit counts surviving rows only, so delete-and-recreate is not
-  limited. Hardening is planned for plan 6.
+  limited. Known gap, deferred.
 - **Upload limit is best-effort.** It counts stored objects only, so uploads deleted on save,
   parallel requests, and hoarded unused signed URLs can all bypass it. Bucket size caps and the
-  listing limits still bound the damage. Hardening needs an issuance record (a migration) and is
-  planned for plan 6.
+  listing limits still bound the damage. Hardening needs an issuance record (a migration); known
+  gap, deferred.
 - **Re-review:** title, description, rent, gender preference, address/city/state/ZIP, location,
   unit, or adding a photo → `pending` (clears `review_note`). Removing or reordering photos,
   dates, rooms, roommates, private bathroom, furnished, amenities, and status changes keep the
   current review status. School and type can't change on edit, so they need no re-review. The 20/hour upload limit and the "any added photo" re-review rule are
-  owner decisions that differ from the design spec. Editing a `rejected` listing always
+  owner decisions. Editing a `rejected` listing always
   resubmits it; a `hidden` one stays hidden. "Resubmit" in `/me/listings` is the edit flow.
 - **Stale edits:** `updateListing` re-reads the listing (`FOR UPDATE`) and its photo ids inside
   the transaction and throws `Conflict` if the review status or photo set changed since the edit
@@ -54,8 +54,9 @@
   (non-UUID) id in `setListingStatus` gets `ValidationError`; it reveals nothing about existence.
 - **Storage cleanup after commit is best-effort.** Raw uploads, removed photos, and a deleted
   listing's photos are deleted via `bestEffort`, which reports failures to Sentry. A storage
-  failure never fails a committed save; leftovers are removed by the planned daily cleanup cron
-  (plan 6). If the save itself fails, the newly processed photos are deleted instead.
+  failure never fails a committed save; leftovers are removed by the daily cleanup cron
+  (`storage.md`, Cleanup: `/api/cron/cleanup`, 24-hour grace). If the save itself fails, the
+  newly processed photos are deleted instead.
 
 ## Unit privacy
 

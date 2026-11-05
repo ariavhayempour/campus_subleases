@@ -42,8 +42,11 @@ Code: `server/services/reports.ts` (create, auto-hide), `moderation.ts` (blocks)
   since its last review (`reviewed_at`, or `created_at` if never reviewed) becomes `hidden`. The
   same transaction writes an `auto_hid_listing` audit row with no admin.
 - The count is made under a row lock on the listing, so concurrent reports cross the threshold
-  exactly once. Only reports with a non-null reporter count; a deleted reporter's report stops
-  counting. Reports on listings that are not `approved` only queue.
+  exactly once. The locked read also returns the count start,
+  `coalesce(reviewed_at, created_at)`, as text (a JS `Date` would drop its microseconds), and the
+  count query takes it as a `timestamptz` parameter instead of joining `listings` again.
+- Only reports with a non-null reporter count; a deleted reporter's report stops counting. Reports
+  on listings that are not `approved` only queue.
 - **Counter reset:** every Approve, Reject, Hide, and Unhide sets `reviewed_at`, so reports filed
   before that no longer count. A confirmed or reversed auto-hide therefore starts from zero.
 - **"Auto-hidden" flag:** a `hidden` listing is flagged "Auto-hidden" (on the admin Hidden tab and
@@ -55,7 +58,8 @@ Code: `server/services/reports.ts` (create, auto-hide), `moderation.ts` (blocks)
 ## Blocks
 
 - **Block user / Unblock** are in the thread menu (see `messaging.md`). `/settings` lists every
-  user you have blocked, newest first, with the date and an **Unblock** button; the empty state
+  user you have blocked, newest first, with the date (in the viewer's zone, via
+  `<LocalTime dateOnly />`) and an **Unblock** button; the empty state
   is "You haven't blocked anyone." Unblocking from `/settings` revalidates `/settings` and the
   `/messages` layout.
 - `blockUser` takes both users' messaging advisory locks (sorted, via `lockMessagingUsers` in

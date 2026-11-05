@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 type FavoriteButtonProps = {
   listingId: string;
+  listingTitle: string;
   initialFavorited: boolean;
   signedIn: boolean;
   withText?: boolean;
@@ -19,6 +20,7 @@ const baseClass =
 
 export function FavoriteButton({
   listingId,
+  listingTitle,
   initialFavorited,
   signedIn,
   withText = false,
@@ -31,7 +33,7 @@ export function FavoriteButton({
   const icon = (
     <Heart aria-hidden className={cn('size-4', favorited && 'fill-rose-500 text-rose-500')} />
   );
-  const label = withText ? undefined : 'Save listing';
+  const label = favorited ? `Remove “${listingTitle}” from saved` : `Save “${listingTitle}”`;
   const text = withText && <span>{favorited ? 'Saved' : 'Save'}</span>;
 
   if (!signedIn) {
@@ -69,7 +71,6 @@ export function FavoriteButton({
         type="button"
         onClick={toggle}
         disabled={pending}
-        aria-pressed={favorited}
         aria-label={label}
         className={buttonClass}
       >

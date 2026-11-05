@@ -4,6 +4,7 @@ import {
   BUCKETS,
   createSignedUploadUrl,
   downloadObject,
+  listFolders,
   listObjects,
   objectExists,
   publicObjectUrl,
@@ -11,12 +12,16 @@ import {
   uploadObject,
 } from '@/server/storage/client';
 
-const prefix = `listings/user_storagetest${randomUUID().replaceAll('-', '')}`;
+const userFolder = `user_storagetest${randomUUID().replaceAll('-', '')}`;
+const prefix = `listings/${userFolder}`;
 const uploadPath = (ext = 'jpg'): string => `${prefix}/${randomUUID()}.${ext}`;
 const written: { bucket: (typeof BUCKETS)[keyof typeof BUCKETS]; path: string }[] = [];
 
 afterAll(async () => {
-  for (const { bucket, path } of written) await removeObjects(bucket, [path]);
+  for (const name of Object.values(BUCKETS)) {
+    const paths = written.filter((entry) => entry.bucket === name).map((entry) => entry.path);
+    await removeObjects(name, paths);
+  }
 });
 
 describe('storage wrapper', () => {
@@ -92,5 +97,30 @@ describe('storage wrapper', () => {
     await uploadObject(BUCKETS.listingPhotos, rootPath, Buffer.from('webp bytes'), 'image/webp');
     const root = await listObjects(BUCKETS.listingPhotos, '');
     expect(root.map((object) => object.path)).toContain(rootPath);
+  });
+
+  it('lists the immediate child folders under a prefix', async () => {
+    const path = uploadPath();
+    written.push({ bucket: BUCKETS.uploads, path });
+    await uploadObject(BUCKETS.uploads, path, Buffer.from('jpeg bytes'), 'image/jpeg');
+    expect(await listFolders(BUCKETS.uploads, 'listings')).toContain(userFolder);
+    expect(await listFolders(BUCKETS.uploads, '')).toContain('listings');
+  });
+
+  it('removes more paths than one remove batch holds', async () => {
+    const batchPrefix = `${prefix}/batch`;
+    const paths = Array.from({ length: 150 }, (_, i) => `${batchPrefix}/${i}-${randomUUID()}.jpg`);
+    for (const path of paths) written.push({ bucket: BUCKETS.uploads, path });
+    for (let i = 0; i < paths.length; i += 25) {
+      await Promise.all(
+        paths
+          .slice(i, i + 25)
+          .map((path) => uploadObject(BUCKETS.uploads, path, Buffer.from('x'), 'image/jpeg')),
+      );
+    }
+    expect(await listObjects(BUCKETS.uploads, batchPrefix)).toHaveLength(150);
+
+    await removeObjects(BUCKETS.uploads, paths);
+    expect(await listObjects(BUCKETS.uploads, batchPrefix)).toEqual([]);
   });
 });

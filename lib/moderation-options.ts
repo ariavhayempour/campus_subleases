@@ -1,3 +1,5 @@
+import type { AuditEntry } from '@/server/services/audit';
+
 export const REPORT_TARGET_TYPES = ['user', 'listing', 'message'] as const;
 export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number];
 export const REPORT_REASONS = ['scam', 'spam', 'inappropriate', 'harassment', 'other'] as const;
@@ -35,3 +37,9 @@ export const REPORT_DUPLICATE = "You've already reported this. We'll review it s
 export const REPORT_RATE_LIMITED = 'You can send up to 20 reports a day. Try again tomorrow.';
 export const STALE_REVIEW = 'This listing was edited — reload to review the new version';
 export const REVIEW_STATE_CHANGED = "This listing's review status changed — reload";
+
+// Only the auto-hide is written without an admin; any other null admin was deleted.
+export function auditActorLabel(entry: Pick<AuditEntry, 'adminName' | 'action'>): string {
+  if (entry.adminName) return entry.adminName;
+  return entry.action === 'auto_hid_listing' ? 'System' : 'Deleted admin';
+}

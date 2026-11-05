@@ -13,6 +13,7 @@ import {
 } from '@/lib/listing-options';
 import { listingBadges } from '@/lib/listing-rules';
 import {
+  auditActorLabel,
   REPORT_REASON_LABELS,
   REPORT_STATUS_LABELS,
   USER_STATUS_LABELS,
@@ -169,7 +170,7 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
           {view.history.map((entry) => (
             <li key={entry.id}>
               <LocalTime iso={entry.createdAt.toISOString()} /> · {ACTION_LABELS[entry.action]} by{' '}
-              {entry.adminName ?? 'System'}
+              {auditActorLabel(entry)}
               {entry.snapshot ? ` (${summarizeSnapshot(entry.snapshot)})` : ''}
             </li>
           ))}
