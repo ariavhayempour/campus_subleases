@@ -87,7 +87,6 @@ export async function loadAdminConversation(
               schoolSlug: row.schoolSlug,
               coverPath: row.coverPath,
               address: row.address,
-              unit: row.unit,
             },
             row.unit,
             true,

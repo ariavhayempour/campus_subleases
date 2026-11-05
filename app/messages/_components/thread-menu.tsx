@@ -1,9 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import { ReportDialog } from '@/app/_components/report-dialog';
 import { blockUserAction, unblockUserAction } from '../actions';
+import { useRefreshAfter } from './use-refresh-after';
 
 type ThreadMenuProps = {
   otherUserId: string;
@@ -12,7 +12,7 @@ type ThreadMenuProps = {
 };
 
 export function ThreadMenu({ otherUserId, otherName, blocked }: ThreadMenuProps) {
-  const router = useRouter();
+  const refreshAfter = useRefreshAfter();
   const [pending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -23,11 +23,9 @@ export function ThreadMenu({ otherUserId, otherName, blocked }: ThreadMenuProps)
     setFailed(false);
     startTransition(async () => {
       const action = blocked ? unblockUserAction : blockUserAction;
-      const result = await action(otherUserId).catch(() => null);
-      if (result?.ok) {
-        menu.current?.removeAttribute('open');
-        router.refresh();
-      } else setFailed(true);
+      const result = await refreshAfter(() => action(otherUserId)).catch(() => null);
+      if (result?.ok) menu.current?.removeAttribute('open');
+      else setFailed(true);
     });
   }
 

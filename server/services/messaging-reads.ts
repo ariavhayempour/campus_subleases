@@ -156,7 +156,6 @@ type ThreadListingRow = {
   schoolSlug: string;
   coverPath: string | null;
   address: string;
-  unit: string | null;
 };
 
 export function toThreadListing(
@@ -242,7 +241,6 @@ export async function getThread(actor: Actor, conversationId: string): Promise<T
               schoolSlug: row.schoolSlug,
               coverPath: row.coverPath,
               address: row.address,
-              unit: row.unit,
             },
             row.unit,
             row.ownerId === user.userId || (row.isPublic && !blocked),
@@ -294,7 +292,6 @@ export async function getConversationStart(
       schoolSlug: schools.slug,
       coverPath: listingPhotos.storagePath,
       address: listings.address,
-      unit: listings.unit,
       hostId: users.id,
       hostName: users.displayName,
     })

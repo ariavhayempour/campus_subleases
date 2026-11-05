@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { useMessaging } from '@/app/_components/messaging-provider';
 import { mergeMessages } from '@/lib/messages';
@@ -19,7 +18,6 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
   const [seenThread, setSeenThread] = useState(thread);
   const [loadError, setLoadError] = useState(false);
   const [loading, startLoading] = useTransition();
-  const router = useRouter();
   const { refreshUnread, onEvent, onResync } = useMessaging();
 
   // The server window slides forward on revalidation; fold it in so seen messages are never dropped.
@@ -87,15 +85,15 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
       if (event.message.senderId === thread.viewerId) return;
       if (document.visibilityState === 'visible') markRead();
     });
+    // ResyncRefresher refreshes the route; the new server window merges in on render.
     const offResync = onResync(() => {
-      router.refresh();
       if (document.visibilityState === 'visible') markRead();
     });
     return () => {
       offEvent();
       offResync();
     };
-  }, [thread.id, thread.viewerId, onEvent, onResync, addMessages, markRead, router]);
+  }, [thread.id, thread.viewerId, onEvent, onResync, addMessages, markRead]);
 
   function loadEarlier() {
     const oldest = messages[0];

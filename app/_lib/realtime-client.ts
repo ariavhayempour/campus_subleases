@@ -5,7 +5,7 @@ type SubscribeOptions = {
   userId: string;
   getToken: () => Promise<string | null>;
   onEvent: (event: RealtimeEvent) => void;
-  onSubscribed: (isReconnect: boolean) => void;
+  onSubscribed: () => void;
 };
 
 export function subscribeToUserChannel(options: SubscribeOptions): (() => void) | null {
@@ -15,7 +15,6 @@ export function subscribeToUserChannel(options: SubscribeOptions): (() => void) 
 
   const client = createClient(url, publishableKey, { accessToken: options.getToken });
   let stopped = false;
-  let subscribedBefore = false;
 
   const start = async () => {
     // The socket only carries the Clerk token if auth is set before joining a private channel.
@@ -31,9 +30,7 @@ export function subscribeToUserChannel(options: SubscribeOptions): (() => void) 
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`Realtime channel ${status}; live delivery may be unavailable`);
         }
-        if (status !== 'SUBSCRIBED') return;
-        options.onSubscribed(subscribedBefore);
-        subscribedBefore = true;
+        if (status === 'SUBSCRIBED') options.onSubscribed();
       });
   };
   void start().catch((error: unknown) => {
