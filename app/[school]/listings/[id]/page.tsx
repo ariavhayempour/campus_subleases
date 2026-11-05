@@ -6,6 +6,7 @@ import { cache } from 'react';
 import { FavoriteButton } from '@/app/_components/favorite-button';
 import { ListingBadge } from '@/app/_components/listing-badge';
 import { MessageHostButton } from '@/app/_components/message-host-button';
+import { ReportButton } from '@/app/_components/report-button';
 import { orNotFound } from '@/app/_lib/guards';
 import { formatDateRange, formatDistanceKm, formatMonthYear, formatRent } from '@/lib/format';
 import {
@@ -155,6 +156,14 @@ export default async function ListingPage({ params }: ListingPageProps) {
               initialFavorited={listing.isFavorited}
               signedIn={actor.kind === 'user'}
               withText
+            />
+          )}
+          {listing.viewer === 'visitor' && actor.kind === 'user' && (
+            <ReportButton
+              targetType="listing"
+              targetId={listing.id}
+              label="Report listing"
+              title="Report listing"
             />
           )}
         </aside>

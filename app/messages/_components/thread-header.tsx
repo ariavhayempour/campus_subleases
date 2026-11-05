@@ -40,7 +40,13 @@ export function ThreadHeader({
         )}
         <p className="truncate">{otherUser?.displayName ?? DELETED_USER_LABEL}</p>
       </div>
-      {otherUser && showMenu && <ThreadMenu otherUserId={otherUser.id} blocked={blocked} />}
+      {otherUser && showMenu && (
+        <ThreadMenu
+          otherUserId={otherUser.id}
+          otherName={otherUser.displayName}
+          blocked={blocked}
+        />
+      )}
     </header>
   );
 }
