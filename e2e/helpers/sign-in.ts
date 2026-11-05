@@ -5,6 +5,8 @@ export const testUserEmail = process.env.E2E_CLERK_USER_EMAIL ?? '';
 
 export const secondUserEmail = process.env.E2E_CLERK_USER2_EMAIL ?? '';
 
+export const adminUserEmail = process.env.E2E_CLERK_ADMIN_EMAIL ?? '';
+
 export async function signInTestUser(page: Page, email: string = testUserEmail): Promise<string> {
   await page.goto('/'); // Clerk loads here without a mounted <SignIn /> racing its own redirect
   // Email code (fixed for +clerk_test addresses) avoids Client Trust's new-device check on password sign-in.

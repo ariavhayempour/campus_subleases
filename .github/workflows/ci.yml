@@ -49,6 +49,7 @@ jobs:
     env:
       E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
       E2E_CLERK_USER2_EMAIL: ${{ secrets.E2E_CLERK_USER2_EMAIL }}
+      E2E_CLERK_ADMIN_EMAIL: ${{ secrets.E2E_CLERK_ADMIN_EMAIL }}
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4

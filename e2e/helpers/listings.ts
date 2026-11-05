@@ -33,6 +33,7 @@ export async function seedListing(
   userId: string,
   schoolSlug: string,
   title: string,
+  options: { withPhoto?: boolean } = {},
 ): Promise<string> {
   const sql = connect();
   try {
@@ -49,7 +50,25 @@ export async function seedListing(
         'SRID=4326;POINT(-89.39 43.07)'::geography
       )
       returning id`;
+    if (options.withPhoto) {
+      // The file does not exist in storage; the edit form only needs one photo row.
+      await sql`
+        insert into listing_photos (listing_id, storage_path, position)
+        values (${row.id}, 'e2e/placeholder', 0)`;
+    }
     return row.id;
+  } finally {
+    await sql.end();
+  }
+}
+
+export async function removeAudit(listingIds: string[]): Promise<void> {
+  if (listingIds.length === 0) return;
+  const sql = connect();
+  try {
+    await sql`
+      delete from admin_audit_log
+      where target_type = 'listing' and target_id in ${sql(listingIds)}`;
   } finally {
     await sql.end();
   }
