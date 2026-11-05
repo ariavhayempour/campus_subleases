@@ -1,7 +1,7 @@
-import { and, eq, or } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import { blockInputSchema } from '@/lib/validation/messaging';
 import { db, type DbExecutor } from '@/server/db/client';
-import { blocks } from '@/server/db/schema';
+import { blocks, users } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound, parseInput, ValidationError } from './errors';
 import { lockMessagingUsers } from './locks';
@@ -64,4 +64,16 @@ export async function getBlockState(
     viewerBlocked: rows.some((row) => row.blockerId === viewerId),
     blockedByOther: rows.some((row) => row.blockerId === otherId),
   };
+}
+
+export type BlockedUser = { id: string; displayName: string; blockedAt: Date };
+
+export async function listBlockedUsers(actor: Actor): Promise<BlockedUser[]> {
+  const user = requireUser(actor);
+  return db()
+    .select({ id: users.id, displayName: users.displayName, blockedAt: blocks.createdAt })
+    .from(blocks)
+    .innerJoin(users, eq(users.id, blocks.blockedId))
+    .where(eq(blocks.blockerId, user.userId))
+    .orderBy(desc(blocks.createdAt));
 }

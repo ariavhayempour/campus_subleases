@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { REPORT_DETAILS_MAX, REPORT_REASONS, REPORT_TARGET_TYPES } from '@/lib/moderation-options';
+import {
+  CONFIRM_WORD,
+  REPORT_DETAILS_MAX,
+  REPORT_REASONS,
+  REPORT_TARGET_TYPES,
+} from '@/lib/moderation-options';
 
 export const reportInputSchema = z.object({
   targetType: z.enum(REPORT_TARGET_TYPES),
@@ -11,4 +16,8 @@ export const reportInputSchema = z.object({
     .max(REPORT_DETAILS_MAX, 'Keep details under 1,000 characters')
     .optional()
     .transform((value) => value || undefined),
+});
+
+export const deleteAccountSchema = z.object({
+  confirm: z.literal(CONFIRM_WORD, { error: `Type ${CONFIRM_WORD} to confirm` }),
 });

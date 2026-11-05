@@ -33,6 +33,9 @@ export function SiteHeader() {
             <Link href="/me/listings" className="hover:underline">
               My listings
             </Link>
+            <Link href="/settings" className="hover:underline">
+              Settings
+            </Link>
             <UserButton />
           </nav>
         </Show>

@@ -4,7 +4,12 @@ import { db } from '@/server/db/client';
 import { blocks } from '@/server/db/schema';
 import { ANONYMOUS } from '@/server/services/actor';
 import { Forbidden, NotFound } from '@/server/services/errors';
-import { blockUser, getBlockState, unblockUser } from '@/server/services/moderation';
+import {
+  blockUser,
+  getBlockState,
+  listBlockedUsers,
+  unblockUser,
+} from '@/server/services/moderation';
 import { withRollback } from '../helpers/db';
 import { actorFor, createUser } from '../helpers/fixtures';
 
@@ -75,5 +80,24 @@ describe('moderation', () => {
     withRollback(async () => {
       await expect(blockUser(ANONYMOUS, { userId: 'user_x' })).rejects.toBeInstanceOf(Forbidden);
       await expect(unblockUser(ANONYMOUS, { userId: 'user_x' })).rejects.toBeInstanceOf(Forbidden);
+    }));
+
+  it('listBlockedUsers returns my blocks, newest first', () =>
+    withRollback(async () => {
+      const me = await createUser();
+      const older = await createUser({ displayName: 'Older O.' });
+      const newer = await createUser({ displayName: 'Newer N.' });
+      await db()
+        .insert(blocks)
+        .values([
+          { blockerId: me.id, blockedId: older.id, createdAt: new Date('2026-01-01T00:00:00Z') },
+          { blockerId: me.id, blockedId: newer.id, createdAt: new Date('2026-02-01T00:00:00Z') },
+        ]);
+      const list = await listBlockedUsers(actorFor(me.id));
+      expect(list.map((row) => [row.id, row.displayName])).toEqual([
+        [newer.id, 'Newer N.'],
+        [older.id, 'Older O.'],
+      ]);
+      expect(list[0]?.blockedAt).toBeInstanceOf(Date);
     }));
 });

@@ -74,7 +74,6 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 ## Decisions that can look like bugs
 
 - `NEXT_PUBLIC_SUPABASE_URL` is also used server-side for Storage (`server/storage/client.ts`).
-- Deleting a user leaves their photo files until the plan-6 cleanup cron.
 - Listing E2E seeds rows via SQL; the create form is verified manually.
 - Locally, address search uses the Mapbox default public token, which has no URL restriction
   (creating a restricted token needs a card on the account). Production should get a
