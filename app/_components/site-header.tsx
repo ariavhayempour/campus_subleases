@@ -1,5 +1,6 @@
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import { AdminNavLink } from '@/app/_components/admin-nav-link';
 import { MessagesNavLink } from '@/app/_components/messages-nav-link';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/lib/app-config';
@@ -36,6 +37,7 @@ export function SiteHeader() {
             <Link href="/settings" className="hover:underline">
               Settings
             </Link>
+            <AdminNavLink />
             <UserButton />
           </nav>
         </Show>
