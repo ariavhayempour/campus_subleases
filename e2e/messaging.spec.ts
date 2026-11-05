@@ -30,10 +30,12 @@ test.afterEach(async () => {
   ]);
   const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
   if (failures.length > 0) {
-    throw new AggregateError(
-      failures.map((f) => f.reason),
-      'cleanup failed',
-    );
+    const reasons = failures.map((f) => f.reason as unknown);
+    // A bare AggregateError reports only its own message, hiding which steps failed.
+    const messages = reasons.map((r) => (r instanceof Error ? r.message : String(r)));
+    throw new Error(`cleanup failed: ${messages.join('; ')}`, {
+      cause: new AggregateError(reasons, 'cleanup failed'),
+    });
   }
 });
 
@@ -117,6 +119,8 @@ test('a renter messages a host, they reply live, and the host blocks the renter'
   await expect(renterLog).toContainText(RENTER_MESSAGE);
   await expect(renterLog).toContainText(HOST_REPLY);
   await expect(renterPage.getByRole('textbox', { name: 'Message' })).toHaveCount(0);
+  // every() over zero nodes is true, so prove the times rendered before checking them.
+  await expect.poll(() => renterLog.locator('time').count()).toBeGreaterThan(0);
   await expect
     .poll(() =>
       renterLog.locator('time').evaluateAll((nodes, zone) => {
