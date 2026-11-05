@@ -46,6 +46,16 @@ PostGIS lives in the `extensions` schema (Supabase convention; on the default se
   so new code can briefly run against the old schema (and vice versa); expand-then-contract keeps
   that safe. See `environment.md`.
 
+## Moderation tables and indexes
+
+`reports` and `admin_audit_log` (RLS enabled, no policies) back `moderation.md` and `admin.md`.
+Migration `0007_moderation-indexes.sql` added two indexes:
+`admin_audit_log_target` (`target_type`, `target_id`, `created_at`) for per-target history, and
+`reports_reporter` (`reporter_id`, `created_at`) for the 24-hour report rate limit. Reports have a
+partial unique index `reports_open_unique` (reporter, target type, target id, where open) for
+duplicates. Report and audit `target_id` is text, so joins to uuid ids compare as text. Their user
+references are `ON DELETE SET NULL`, so deleting an account keeps the rows.
+
 ## Conventions
 
 UUID primary keys (except `users.id` = Clerk user ID); `created_at timestamptz default now()` on

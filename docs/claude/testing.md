@@ -11,6 +11,23 @@
 - Webhooks: `signedClerkWebhook(payload)` signs a request with the test secret configured in
   `vitest.config.ts`; call the route's `POST` directly.
 
+## Moderation and admin tests
+
+- **Mock `@/server/clerk/users`** in any service test that bans or deletes, then `mockReset()` in
+  `beforeEach` and set return values per test (`account.test.ts`, `admin-users.test.ts`). No test
+  calls Clerk's real API.
+
+  ```ts
+  vi.mock('@/server/clerk/users', () => ({
+    getClerkAccount: vi.fn(),
+    setClerkBan: vi.fn(),
+    deleteClerkAccount: vi.fn(),
+  }));
+  ```
+
+- `account.test.ts` also mocks `deleteProcessedPhotos` so deleting a user never touches Storage.
+- Fixtures: `insertReport`, `insertAudit` in `tests/helpers/moderation.ts`.
+
 ## Messaging and Realtime tests
 
 - **Service tests mock the publisher.** `tests/services/messaging-send.test.ts` replaces
@@ -85,4 +102,25 @@
   (messages cascade) involving the users and the blocks between them. An `afterEach` runs the
   independent steps (close contexts, `resetMessaging`, `removeListings`, `removeBrowseHost`) under
   `Promise.allSettled` and reports every failure, so a failed step cannot skip the rest.
+- **Admin E2E** (`e2e/admin.spec.ts`): a third dev-instance user, `E2E_CLERK_ADMIN_EMAIL`, has
+  `publicMetadata.role = "admin"`. Two tests cover "admin approves" (the row moves to the Approved
+  tab and a signed-out page loads the listing) and "admin rejects, the owner sees the reason, edits
+  and resubmits" (the badge returns to "Pending review" and the listing is back in Pending). Listings
+  are seeded by SQL; `seedListing(..., { withPhoto: true })` adds one `listing_photos` row so the
+  edit form's 1-photo minimum passes. `removeAudit(listingIds)` deletes the audit rows the admin
+  actions wrote. Without either email the tests skip locally and fail in CI.
+  Two more tests cover moderation: "a renter reports a listing and the admin resolves it"
+  (needs `E2E_CLERK_USER2_EMAIL` too; checks the duplicate-report message, the Resolved status, the
+  Open filter, and the audit row) and "the admin bans and unbans a user". The ban test creates a
+  throwaway Clerk user per run with `createThrowawayUser()` (`e2e/helpers/moderation.ts`, Backend
+  API over `fetch` with `CLERK_SECRET_KEY`, because `@clerk/nextjs/server` does not load under
+  Playwright), plus its `users` row, and asserts `banned` on the Clerk side after each action.
+  `afterEach` always runs `deleteThrowawayUser(id)` (a Clerk 404 counts as done) and
+  `removeReports(targetIds)`, which is limited to the test's own listing ids and the throwaway user
+  id. The helpers refuse to run unless `CLERK_SECRET_KEY` starts with `sk_test_`, and only delete a
+  Clerk user whose primary email matches `e2e-ban-<12 hex>+clerk_test@example.com` and whose
+  `private_metadata.e2eThrowaway` is true. A `beforeAll` sweep (`sweepThrowawayUsers`) removes such
+  users left by killed runs, re-checking each result because Clerk's `query` is fuzzy. The report
+  test skips locally without `E2E_CLERK_USER2_EMAIL`, and the ban test without `CLERK_SECRET_KEY`;
+  both fail in CI.
 - Default project is desktop Chrome (the site is desktop-first).

@@ -2,8 +2,9 @@
 
 ## Lifecycle
 
-- New listings start `review_status = pending`; only admins approve (plan 5). Locally,
-  `pnpm dev:approve-listing <id>` approves a listing in the local database only.
+- New listings start `review_status = pending`; admins approve, reject, hide, and unhide
+  them at `/admin/listings` (see `admin.md`). Locally, `pnpm dev:approve-listing <id>` still approves
+  a listing in the local database only, without an audit row.
 - Owner status: `active` → `taken` (sets `taken_at`) or `removed`; either can be reactivated.
   An `active` listing whose `available_to` is before today (school timezone) is **expired**.
 - Reactivation does not re-check dates: a past-dated listing that is reactivated just stays
@@ -84,6 +85,8 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 `/listings/new`, `/listings/[id]/edit` (owner), `/me/listings` (owner; `?notice=` banners),
 `/[school]/listings/[id]` (public when public; `noindex`; Open Graph without the unit), `/[school]` (browse; see `search.md`),
 `/me/favorites` (signed in, onboarded; `noindex`).
+The listing page shows **Report listing** to signed-in visitors (not the owner or admins); see
+`moderation.md`.
 The listing page shows **Message host** to visitors (owners and admins see no button); it becomes
 **View conversation** when `conversationId` is set. `/messages`, `/messages/new?listing=<id>`, and
 `/messages/[id]` are described in `messaging.md`.

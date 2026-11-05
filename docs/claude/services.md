@@ -21,8 +21,18 @@ actor: they are system operations called only from the Clerk webhook and `getAct
 
 - `messaging`: start a conversation, send, mark read (all writes), composer state.
 - `messaging-reads`: inbox, thread (with paging), unread count, conversation-start lookup.
-- `moderation`: `blockUser`, `unblockUser`, `getBlockState`. Reports and admin actions join it in
-  plan 5.
+- `moderation`: `blockUser`, `unblockUser`, `getBlockState`, `listBlockedUsers`.
+- `reports`: `createReport` (visibility, 20/day limit, duplicates, auto-hide).
+- `account`: `deleteAccount` (Clerk first, then the local rows).
+- `audit`: `writeAudit` (on the caller's executor), `listAuditFor`, `listAuditLog`.
+- `admin-listings` (review queue and decisions, counts), `admin-users` (user view, ban/unban),
+  `admin-reports` (queue, report view, resolve), `admin-conversations` (logged read-only thread),
+  `admin-stats` (trial stats). See `admin.md`.
+- `locks`: `lockMessagingUsers`, sorted advisory locks shared by messaging, blocks, and ban.
+- `best-effort`: `bestEffort`, post-commit cleanup that reports failures to Sentry.
+
+`server/clerk/users.ts` is not a service: it wraps the Clerk Backend API and is called only from
+services. Tests mock it (see `testing.md`).
 
 **After-commit side effects:** a service that must notify something outside the database does it
 after its transaction commits, never inside. `sendMessage` and `startConversation` commit, then

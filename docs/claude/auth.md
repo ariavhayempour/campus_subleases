@@ -6,7 +6,8 @@
   `CLERK_WEBHOOK_SIGNING_SECRET` (400 on failure) and handles `user.created`/`user.updated`
   (upsert first/last name, derived display name, and ban status; never touches the home
   school) and `user.deleted`
-  (delete-if-exists). Duplicate deliveries are harmless.
+  (delete-if-exists, and best-effort deletion of the user's listing photo files). Duplicate
+  deliveries are harmless.
 - **Lazy creation:** when the `users` row is missing (webhook delay; local dev, where webhooks
   don't reach localhost), `getActor()` reads the name with `currentUser()` and creates it.
 - **Display name:** always `formatDisplayName(first, last)` (`lib/display-name.ts`), e.g.
@@ -17,6 +18,16 @@
   session token claim `metadata.role`, which requires the session-token customization
   `{ "metadata": "{{user.public_metadata}}" }` in every Clerk instance. A role change takes
   effect on the user's next token refresh (≤ 60 s).
+- **Clerk Backend API wrapper** (`server/clerk/users.ts`, the only module that calls the Backend
+  API for users): `getClerkAccount` (null on 404), `setClerkBan`, `deleteClerkAccount` (a 404 counts
+  as success). Called by `admin-users` (the admin flag on the user page, ban/unban) and `account`
+  (delete). `getActor` uses Clerk's `currentUser()` directly.
+- **Ban mirroring:** Clerk owns the ban. After `setClerkBan` succeeds, `banUser`/`unbanUser` write
+  the returned state to `users.status` through `syncUserFromClerk`, the same mapping the webhook
+  uses; the webhook then confirms it. See `admin.md`.
+- **Deleted users:** if the `users` row is missing and Clerk reports the user gone, `getActor`
+  returns anonymous instead of recreating the row (the token stays valid for up to 60 s). See
+  `moderation.md`.
 - **Onboarding:** users without a home school are redirected to `/onboarding`
   (`requireOnboardedUser()` in `app/_lib/guards.ts`; `/` also redirects).
 - **Supabase ↔ Clerk third-party auth:** Supabase Realtime accepts the Clerk session token

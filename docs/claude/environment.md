@@ -34,6 +34,7 @@ production.
 | `NEXT_PUBLIC_SITE_URL`                                             | public                | Absolute URLs in robots.txt and sitemap.xml (see `site-pages.md`)                  |
 | `E2E_CLERK_USER_EMAIL`                                             | test only             | Playwright (a `+clerk_test` user; signs in by email code)                          |
 | `E2E_CLERK_USER2_EMAIL`                                            | test only             | Playwright messaging test (a second `+clerk_test` user)                            |
+| `E2E_CLERK_ADMIN_EMAIL`                                            | test only             | Playwright admin tests (a `+clerk_test` user with `publicMetadata.role = "admin"`) |
 
 ## CI (GitHub Actions)
 
@@ -58,6 +59,7 @@ Repository secrets (Settings → Secrets and variables → Actions):
 | `CLERK_SECRET_KEY`                  | `sk_test_<dev-instance>` (Clerk dev instance → API keys)                        |
 | `E2E_CLERK_USER_EMAIL`              | `<name>+clerk_test@example.com` (an existing dev-instance user)                 |
 | `E2E_CLERK_USER2_EMAIL`             | `<other-name>+clerk_test@example.com` (a second, different dev-instance user)   |
+| `E2E_CLERK_ADMIN_EMAIL`             | `<name>+clerk_test_admin@example.com` (dev-instance user with role `admin`)     |
 | `STAGING_DATABASE_DIRECT_URL`       | `postgresql://postgres.<staging-ref>:<db-password>@<pooler-host>:5432/postgres` |
 
 Environment secret (Settings → Environments → `production`; the name must match `migrate.yml`):

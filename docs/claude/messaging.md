@@ -1,7 +1,7 @@
 # Messaging
 
 Code: `server/services/messaging.ts` (writes), `messaging-reads.ts` (inbox, thread, unread count),
-`moderation.ts` (block/unblock), `server/realtime/publish.ts`, `app/_lib/realtime-client.ts`,
+`moderation.ts` (block/unblock, blocked-users list), `reports.ts` (reporting), `server/realtime/publish.ts`, `app/_lib/realtime-client.ts`,
 `app/_components/messaging-provider.tsx`, `app/messages/`. Shared constants and types live in
 `lib/messaging-options.ts`; schemas in `lib/validation/messaging.ts`.
 
@@ -68,8 +68,8 @@ never told they were blocked: they see the generic `cannot_reply` text.
   - `sendMessage`: lock, full composer-state re-check, message limit, insert.
   - `startConversation`: lock, look the conversation up again, re-check, message limit,
     conversation limit (only when creating one). For an existing conversation the re-check is the
-    full composer state. For a new one it covers blocks only and gives "Listing not found"; the
-    renter's own ban is checked only before the transaction.
+    full composer state. For a new one a block gives "Listing not found", and a ban of either
+    user gives "You can't reply to this conversation", both checked under the lock.
   - `blockUser` takes both users' locks (sorted, via `lockMessagingUsers`) before inserting, so a
     send either commits before the block or waits and sees it.
 
@@ -152,8 +152,8 @@ Live delivery is a convenience on top of the database, which is the source of tr
 - **Non-participants get 404** on `/messages/[id]`, admins included, and so does a malformed id.
   A "load earlier" request with a cursor from another conversation returns a NotFound error
   result, which the thread shows as "Could not load earlier messages. Try again." (not a 404
-  page). Admin read access (with an audit row) is
-  added by plan 5 (Moderation & admin).
+  page). Admins read a thread at `/admin/conversations/[id]`, read-only, and each view writes an
+  audit row (see `admin.md`).
 - Message bodies render as plain text with `whitespace-pre-wrap`; HTML is never interpreted.
 - Every thread shows the safety note (`SAFETY_NOTICE`): "Never send money or a deposit before
   seeing the place in person and meeting the tenant."
@@ -175,16 +175,17 @@ Live delivery is a convenience on top of the database, which is the source of tr
 - Blocking is silent: the blocked user gets no notification and sees only the generic "You can't
   reply" text. The server refuses their next send immediately; their open page updates on its
   next refresh or resync.
-- Plan 5 (Moderation & admin) adds "Report user", "Report message", and the blocked-users list
-  in `/settings`, plus admin read access.
+- **Report user** is in the same menu; **Report message** sits beside each message from the other
+  person (not shown for messages whose sender is gone). Both open the report dialog described in
+  `moderation.md`.
+- `/settings` lists everyone you have blocked with an **Unblock** button.
 
 ## Decisions that can look like bugs
 
-- **Blocking ships here, reporting does not.** Until plan 5, Unblock is reachable only from the
-  thread.
 - **A conversation row appears only with the first message.** Opening `/messages/new` never
   creates one.
-- **Non-participants and admins get 404** on a thread (no admin override until plan 5).
+- **Non-participants and admins get 404** on `/messages/[id]`. Admin access is the separate,
+  logged `/admin/conversations/[id]`.
 - **Deleted other participant:** the thread stays readable; the composer is replaced by "This
   account was deleted" and sending is refused. A **banned** other participant gets the generic
   "You can't reply to this conversation".
@@ -203,4 +204,4 @@ Live delivery is a convenience on top of the database, which is the source of tr
 - **The local Clerk domain is committed** in `supabase/config.toml` (`[auth.third_party.clerk]`).
   It is the dev instance's public Frontend API domain, not a secret.
 - **E2E uses two real Clerk test users** (`E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER2_EMAIL`). The
-  listing is seeded and approved by SQL, as in earlier plans (the admin approval UI is plan 5).
+  listing is seeded and approved by SQL, as in earlier plans.

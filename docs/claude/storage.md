@@ -32,7 +32,7 @@ settings.
    deletes are best-effort and reported to Sentry; a storage failure never fails a committed
    save. If the save fails, the processed files are deleted instead (the raw uploads stay so the
    user can retry).
-4. Leftovers (failed deletes, abandoned uploads, a deleted user's photos) are removed by the
+4. Leftovers (failed deletes, including a deleted user's photos, and abandoned uploads) are removed by the
    planned daily cleanup cron (plan 6).
 
 Photo URLs are public but unguessable. Pages render them with the global
