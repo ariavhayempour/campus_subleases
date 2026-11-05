@@ -52,7 +52,12 @@ export const adminDeleteListingSchema = z.object({
   confirm: z.literal(CONFIRM_WORD, { error: `Type ${CONFIRM_WORD} to confirm` }),
 });
 
-export const banSchema = z.object({ userId: z.string().min(1).max(100) });
+export const banSchema = z.object({
+  userId: z
+    .string()
+    .max(100)
+    .regex(/^user_[A-Za-z0-9_]+$/),
+});
 
 export const reportsQuerySchema = z.object({
   status: z.enum(['open', 'resolved', 'all']).default('open'),

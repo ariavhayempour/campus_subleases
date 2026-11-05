@@ -153,14 +153,21 @@ describe('admin listing services', () => {
       expect(await listAdminListings(adminActor, { school: '  ' })).toHaveLength(all.length);
       expect(await listAdminListings(adminActor, { school: '' })).toHaveLength(all.length);
       expect(all.map((r) => r.id)).toContain(elsewhere.id);
-      const approved = await listAdminListings(adminActor, { tab: 'approved' });
+      const approved = await listAdminListings(adminActor, {
+        tab: 'approved',
+        school: school.slug,
+      });
       expect(approved.map((r) => r.id)).toEqual([a2.id, a1.id]);
-      expect((await listAdminListings(adminActor, { tab: 'hidden' })).map((r) => r.id)).toEqual([
-        hidden.id,
-      ]);
-      expect((await listAdminListings(adminActor, { tab: 'rejected' })).map((r) => r.id)).toEqual([
-        rejected.id,
-      ]);
+      const hiddenRows = await listAdminListings(adminActor, {
+        tab: 'hidden',
+        school: school.slug,
+      });
+      expect(hiddenRows.map((r) => r.id)).toEqual([hidden.id]);
+      const rejectedRows = await listAdminListings(adminActor, {
+        tab: 'rejected',
+        school: school.slug,
+      });
+      expect(rejectedRows.map((r) => r.id)).toEqual([rejected.id]);
       expect(
         await listAdminListings(adminActor, { tab: 'approved', school: other.slug }),
       ).toHaveLength(0);
@@ -305,8 +312,9 @@ describe('admin listing services', () => {
         .set({ reviewedAt: new Date(NOW - 2 * DAY) })
         .where(eq(listings.id, listing.id));
       expect((await getAdminListing(adminActor, listing.id)).autoHidden).toBe(true);
-      const [row] = await listAdminListings(adminActor, { tab: 'hidden' });
-      expect(row.autoHidden).toBe(true);
+      const hiddenRows = await listAdminListings(adminActor, { tab: 'hidden' });
+      const row = hiddenRows.find((r) => r.id === listing.id);
+      expect(row?.autoHidden).toBe(true);
 
       await hideListing(adminActor, { listingId: listing.id });
       expect((await getAdminListing(adminActor, listing.id)).autoHidden).toBe(false);

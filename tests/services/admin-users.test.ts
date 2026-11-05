@@ -119,7 +119,20 @@ describe('banUser', () => {
       for (const id of [admin.id, other.id, peer.id]) expect(await auditRows(id)).toHaveLength(0);
     }));
 
-  it('does not call Clerk or log twice when the state already matches', () =>
+  it('does not call Clerk or log twice when both sides already match', () =>
+    withRollback(async () => {
+      const admin = await createUser();
+      const target = await createUser({ status: 'banned' });
+      vi.mocked(getClerkAccount).mockResolvedValue(account(target.id, { banned: true }));
+
+      await banUser(actorFor(admin.id, true), { userId: target.id });
+
+      expect(setClerkBan).not.toHaveBeenCalled();
+      expect(await statusOf(target.id)).toBe('banned');
+      expect(await auditRows(target.id)).toHaveLength(0);
+    }));
+
+  it('logs the ban when Clerk is already banned but the local status is not', () =>
     withRollback(async () => {
       const admin = await createUser();
       const target = await createUser();
@@ -129,7 +142,16 @@ describe('banUser', () => {
 
       expect(setClerkBan).not.toHaveBeenCalled();
       expect(await statusOf(target.id)).toBe('banned');
-      expect(await auditRows(target.id)).toHaveLength(0);
+      expect(await auditRows(target.id)).toHaveLength(1);
+    }));
+
+  it('rejects a user id that is not shaped like a Clerk id', () =>
+    withRollback(async () => {
+      const admin = await createUser();
+      await expect(banUser(actorFor(admin.id, true), { userId: '../x' })).rejects.toBeInstanceOf(
+        ValidationError,
+      );
+      expect(getClerkAccount).not.toHaveBeenCalled();
     }));
 
   it('does not change anything locally when Clerk fails', () =>

@@ -2,11 +2,13 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/server/db/client';
 import {
+  adminAuditLog,
   blocks,
   conversations,
   favorites,
   listingPhotos,
   listings,
+  reports,
   users,
 } from '@/server/db/schema';
 import { deleteClerkAccount } from '@/server/clerk/users';
@@ -22,6 +24,7 @@ import {
   insertPhoto,
 } from '../helpers/fixtures';
 import { insertConversation } from '../helpers/messaging';
+import { insertAudit, insertReport } from '../helpers/moderation';
 
 vi.mock('@/server/clerk/users', () => ({
   deleteClerkAccount: vi.fn(),
@@ -49,6 +52,18 @@ describe('deleteAccount', () => {
       const otherListing = await insertListing(other.id, school.id);
       await db().insert(favorites).values({ userId: me.id, listingId: otherListing.id });
       await db().insert(blocks).values({ blockerId: me.id, blockedId: other.id });
+      await db().insert(blocks).values({ blockerId: other.id, blockedId: me.id });
+      const report = await insertReport({
+        reporterId: me.id,
+        targetType: 'listing',
+        targetId: otherListing.id,
+      });
+      await insertAudit({
+        adminId: me.id,
+        action: 'hid_listing',
+        targetType: 'listing',
+        targetId: otherListing.id,
+      });
       const conversation = await insertConversation({
         listingId: otherListing.id,
         hostId: other.id,
@@ -67,6 +82,16 @@ describe('deleteAccount', () => {
         0,
       );
       expect(await db().select().from(blocks).where(eq(blocks.blockerId, me.id))).toHaveLength(0);
+      expect(await db().select().from(blocks).where(eq(blocks.blockedId, me.id))).toHaveLength(0);
+      const [keptReport] = await db().select().from(reports).where(eq(reports.id, report.id));
+      expect(keptReport).toBeDefined();
+      expect(keptReport.reporterId).toBeNull();
+      const keptAudit = await db()
+        .select()
+        .from(adminAuditLog)
+        .where(eq(adminAuditLog.targetId, otherListing.id));
+      expect(keptAudit).toHaveLength(1);
+      expect(keptAudit[0].adminId).toBeNull();
       const [kept] = await db()
         .select()
         .from(conversations)

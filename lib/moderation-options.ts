@@ -16,6 +16,12 @@ export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
   message: 'Message',
 };
 export const USER_STATUS_LABELS = { active: 'Active', banned: 'Banned' } as const;
+export const REVIEW_STATUS_LABELS = {
+  pending: 'Pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  hidden: 'Hidden',
+} as const;
 export const REPORT_DETAILS_MAX = 1000;
 export const MAX_REPORTS_PER_DAY = 20;
 export const AUTO_HIDE_REPORTERS = 3;

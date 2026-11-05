@@ -217,14 +217,17 @@ async function setBan(actor: Actor, input: unknown, banned: boolean): Promise<vo
   if (current.isAdmin) throw new Forbidden(`Admins can't be ${banned ? 'banned' : 'unbanned'}`);
 
   // Clerk stays the source of truth; its returned state is mirrored locally right away.
-  const alreadyApplied = current.banned === banned;
-  const updated = alreadyApplied ? current : await setClerkBan(userId, banned);
+  const updated = current.banned === banned ? current : await setClerkBan(userId, banned);
   const action: AdminAction = banned ? 'banned_user' : 'unbanned_user';
   await db().transaction(async (tx) => {
     await lockMessagingUsers(tx, [userId]);
+    const [local] = await tx
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, userId));
     await syncUserFromClerk(updated, tx);
-    // A no-op request changed nothing, so it leaves no audit row.
-    if (alreadyApplied) return;
+    // Audit only a real local change, so a retry after a failed transaction still logs it.
+    if (local?.status === (updated.banned ? 'banned' : 'active')) return;
     await writeAudit(tx, {
       adminId: admin.userId,
       action,

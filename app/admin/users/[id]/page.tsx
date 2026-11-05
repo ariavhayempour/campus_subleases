@@ -6,7 +6,11 @@ import { LocalTime } from '@/app/_components/local-time';
 import { orAdminNotFound, requireAdminPage } from '@/app/_lib/guards';
 import { ACTION_LABELS, summarizeSnapshot } from '@/lib/audit-labels';
 import { formatMonthYear } from '@/lib/format';
-import { REPORT_REASON_LABELS } from '@/lib/moderation-options';
+import {
+  REPORT_REASON_LABELS,
+  REPORT_STATUS_LABELS,
+  REVIEW_STATUS_LABELS,
+} from '@/lib/moderation-options';
 import { getAdminUser, type AdminReportRow } from '@/server/services/admin-users';
 import { BanControls } from '../../_components/ban-controls';
 
@@ -38,7 +42,7 @@ function ReportList({ rows }: { rows: AdminReportRow[] }) {
           </Link>{' '}
           · {report.targetType}: {report.targetLabel} ·{' '}
           <LocalTime iso={report.createdAt.toISOString()} /> ·{' '}
-          {report.reporterName ?? 'Deleted user'} · {report.status}
+          {report.reporterName ?? 'Deleted user'} · {REPORT_STATUS_LABELS[report.status]}
         </li>
       ))}
     </ul>
@@ -81,7 +85,7 @@ export default async function AdminUserPage({ params }: AdminUserPageProps) {
                 <Link href={`/admin/listings/${listing.id}`} className="underline">
                   {listing.title}
                 </Link>{' '}
-                · {listing.schoolName} · {listing.reviewStatus}
+                · {listing.schoolName} · {REVIEW_STATUS_LABELS[listing.reviewStatus]}
                 {listing.openReports > 0 ? ` · ${listing.openReports} open` : ''}
               </li>
             ))}

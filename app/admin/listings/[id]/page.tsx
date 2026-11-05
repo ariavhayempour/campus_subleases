@@ -12,7 +12,11 @@ import {
   LISTING_TYPE_LABELS,
 } from '@/lib/listing-options';
 import { listingBadges } from '@/lib/listing-rules';
-import { REPORT_REASON_LABELS } from '@/lib/moderation-options';
+import {
+  REPORT_REASON_LABELS,
+  REPORT_STATUS_LABELS,
+  USER_STATUS_LABELS,
+} from '@/lib/moderation-options';
 import { getActor } from '@/server/auth/get-actor';
 import { getAdminListing } from '@/server/services/admin-listings';
 import { ReviewActions } from '../../_components/review-actions';
@@ -114,7 +118,7 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
               </Link>
             </p>
             <p>Joined {formatMonthYear(owner.joinedAt)}</p>
-            <p>Status: {owner.status}</p>
+            <p>Status: {USER_STATUS_LABELS[owner.status]}</p>
             <p>
               {owner.listingCount} listing{owner.listingCount === 1 ? '' : 's'}
             </p>
@@ -147,7 +151,7 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
                   {REPORT_REASON_LABELS[report.reason]}
                 </Link>{' '}
                 · <LocalTime iso={report.createdAt.toISOString()} /> ·{' '}
-                {report.reporterName ?? 'Deleted user'} · {report.status}
+                {report.reporterName ?? 'Deleted user'} · {REPORT_STATUS_LABELS[report.status]}
               </li>
             ))}
           </ul>

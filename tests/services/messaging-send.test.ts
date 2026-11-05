@@ -19,6 +19,19 @@ vi.mock('@/server/realtime/publish', () => ({
   publishToUser: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Lets a test run a statement right after the lock, as a concurrent ban would.
+const afterLock = vi.hoisted(() => ({ hook: null as null | (() => Promise<void>) }));
+vi.mock('@/server/services/locks', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/server/services/locks')>();
+  return {
+    ...original,
+    lockMessagingUsers: async (...args: Parameters<typeof original.lockMessagingUsers>) => {
+      await original.lockMessagingUsers(...args);
+      await afterLock.hook?.();
+    },
+  };
+});
+
 beforeEach(() => {
   vi.mocked(publishToUser).mockReset();
   vi.mocked(publishToUser).mockResolvedValue(undefined);
@@ -163,6 +176,25 @@ describe('startConversation', () => {
       await expect(
         startConversation(actorFor(renter.id), { listingId: listing.id, body: 'hi' }),
       ).rejects.toThrow("You can't reply to this conversation");
+    }));
+
+  it('re-checks the sender ban inside the transaction for a new conversation', () =>
+    withRollback(async () => {
+      const { listing } = await liveListing();
+      const renter = await createUser();
+      afterLock.hook = async () => {
+        await db().update(users).set({ status: 'banned' }).where(eq(users.id, renter.id));
+      };
+      try {
+        await expect(
+          startConversation(actorFor(renter.id), { listingId: listing.id, body: 'hi' }),
+        ).rejects.toThrow("You can't reply to this conversation");
+      } finally {
+        afterLock.hook = null;
+      }
+      expect(
+        await db().select().from(conversations).where(eq(conversations.listingId, listing.id)),
+      ).toHaveLength(0);
     }));
 
   it('refuses a signed-in actor with no users row', () =>

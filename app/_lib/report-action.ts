@@ -15,9 +15,9 @@ export type ReportActionInput = {
 
 export async function reportAction(
   input: ReportActionInput,
-): Promise<ActionResult<{ id: string; autoHidden: boolean }>> {
+): Promise<ActionResult<{ id: string }>> {
   const actor = await getActor();
-  const result = await runAction(() => createReport(actor, input));
+  const result = await runAction(async () => ({ id: (await createReport(actor, input)).id }));
   if (result.ok) revalidatePath('/admin', 'layout');
   return result;
 }

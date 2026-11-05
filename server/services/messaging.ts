@@ -249,6 +249,7 @@ export async function startConversation(actor: Actor, input: unknown): Promise<S
     } else {
       const block = await getBlockState(user.userId, listing.ownerId, tx);
       if (block.viewerBlocked || block.blockedByOther) throw new NotFound('Listing not found');
+      assertOpen(await composerStateWithBlock(user.userId, listing.ownerId, block, tx));
     }
     await assertUnderMessageLimit(tx, user.userId);
     if (!found) {
