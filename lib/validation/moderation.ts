@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  ADMIN_NOTE_MAX,
   CONFIRM_WORD,
   REPORT_DETAILS_MAX,
   REPORT_REASONS,
@@ -19,5 +20,34 @@ export const reportInputSchema = z.object({
 });
 
 export const deleteAccountSchema = z.object({
+  confirm: z.literal(CONFIRM_WORD, { error: `Type ${CONFIRM_WORD} to confirm` }),
+});
+
+export const adminListingsQuerySchema = z.object({
+  tab: z.enum(['pending', 'approved', 'hidden', 'rejected']).default('pending'),
+  school: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((value) => value || undefined),
+});
+
+const listingId = z.uuid();
+
+export const listingIdSchema = z.object({ listingId });
+
+export const approveSchema = z.object({ listingId, version: z.string().min(1).max(40) });
+
+export const rejectSchema = approveSchema.extend({
+  note: z
+    .string()
+    .trim()
+    .min(1, 'Give the owner a reason')
+    .max(ADMIN_NOTE_MAX, 'Keep the reason under 1,000 characters'),
+});
+
+export const adminDeleteListingSchema = z.object({
+  listingId,
   confirm: z.literal(CONFIRM_WORD, { error: `Type ${CONFIRM_WORD} to confirm` }),
 });

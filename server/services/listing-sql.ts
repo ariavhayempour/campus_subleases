@@ -34,3 +34,6 @@ export const noBlockWith = (viewerId: string): SQL =>
     where (${blocks.blockerId} = ${viewerId} and ${blocks.blockedId} = ${listings.ownerId})
        or (${blocks.blockerId} = ${listings.ownerId} and ${blocks.blockedId} = ${viewerId})
   )`;
+
+// updated_at at microsecond precision; a JS Date would round to ms and cause false stale conflicts.
+export const listingVersion: SQL<string> = sql<string>`to_char(${listings.updatedAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;

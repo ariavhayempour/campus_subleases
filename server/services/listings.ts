@@ -357,16 +357,19 @@ export async function setListingStatus(actor: Actor, input: unknown): Promise<vo
   });
 }
 
+// Deletes the row (photos and favorites cascade) and returns the photo base paths to clean up.
+export async function deleteListingRow(tx: DbExecutor, listingId: string): Promise<string[]> {
+  const photos = await tx
+    .select({ storagePath: listingPhotos.storagePath })
+    .from(listingPhotos)
+    .where(eq(listingPhotos.listingId, listingId));
+  await tx.delete(listings).where(eq(listings.id, listingId));
+  return photos.map((photo) => photo.storagePath);
+}
+
 export async function deleteListing(actor: Actor, listingId: string): Promise<void> {
   const user = requireUser(actor);
   await loadOwnedListing(user.userId, listingId);
-  const photoPaths = await db().transaction(async (tx) => {
-    const photos = await tx
-      .select({ storagePath: listingPhotos.storagePath })
-      .from(listingPhotos)
-      .where(eq(listingPhotos.listingId, listingId));
-    await tx.delete(listings).where(eq(listings.id, listingId));
-    return photos.map((photo) => photo.storagePath);
-  });
+  const photoPaths = await db().transaction((tx) => deleteListingRow(tx, listingId));
   await bestEffort(() => deleteProcessedPhotos(photoPaths));
 }
