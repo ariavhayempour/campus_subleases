@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 import { listingBadges } from '@/lib/listing-rules';
 import { REVIEW_STATE_CHANGED, STALE_REVIEW } from '@/lib/moderation-options';
@@ -58,7 +58,13 @@ async function setup(overrides: Partial<typeof listings.$inferInsert> = {}) {
 
 const rowOf = async (id: string) =>
   (await db().select().from(listings).where(eq(listings.id, id)))[0];
-const auditCount = async (): Promise<number> => (await db().select().from(adminAuditLog)).length;
+const auditRows = (listingId: string) =>
+  db()
+    .select()
+    .from(adminAuditLog)
+    .where(and(eq(adminAuditLog.targetType, 'listing'), eq(adminAuditLog.targetId, listingId)));
+const auditCount = async (listingId: string): Promise<number> =>
+  (await auditRows(listingId)).length;
 
 async function fieldErrors(promise: Promise<unknown>): Promise<Record<string, string[]>> {
   try {
@@ -179,7 +185,7 @@ describe('admin listing services', () => {
         reviewNote: null,
       });
       expect(row.reviewedAt).not.toBeNull();
-      const audit = await db().select().from(adminAuditLog);
+      const audit = await auditRows(listing.id);
       expect(audit).toHaveLength(1);
       expect(audit[0]).toMatchObject({
         action: 'approved_listing',
@@ -203,7 +209,7 @@ describe('admin listing services', () => {
       });
       const [mine] = await listMyListings(actorFor(owner.id));
       expect(listingBadges(mine).map((b) => b.label)).toContain('Rejected: Blurry photos');
-      const [audit] = await db().select().from(adminAuditLog);
+      const [audit] = await auditRows(listing.id);
       expect(audit).toMatchObject({
         action: 'rejected_listing',
         snapshot: { note: 'Blurry photos' },
@@ -256,7 +262,7 @@ describe('admin listing services', () => {
       );
 
       await approveListing(adminActor, { listingId: listing.id, version: fresh.version });
-      const before = await auditCount();
+      const before = await auditCount(listing.id);
       const again = await getAdminListing(adminActor, listing.id);
       await expect(
         approveListing(adminActor, { listingId: listing.id, version: again.version }),
@@ -273,7 +279,7 @@ describe('admin listing services', () => {
           version: 'x',
         }),
       ).rejects.toBeInstanceOf(NotFound);
-      expect(await auditCount()).toBe(before);
+      expect(await auditCount(listing.id)).toBe(before);
     }));
 
   it('hides, confirms an auto-hide, and unhides', () =>
@@ -373,7 +379,7 @@ describe('admin listing services', () => {
         ),
       ).toEqual({ confirm: ['Type DELETE to confirm'] });
       expect(await rowOf(listing.id)).toBeDefined();
-      expect(await auditCount()).toBe(0);
+      expect(await auditCount(listing.id)).toBe(0);
 
       await deleteListingAsAdmin(adminActor, { listingId: listing.id, confirm: 'DELETE' });
       expect(await rowOf(listing.id)).toBeUndefined();
@@ -388,7 +394,7 @@ describe('admin listing services', () => {
         .from(conversations)
         .where(eq(conversations.id, conversation.id));
       expect(kept.listingId).toBeNull();
-      const [audit] = await db().select().from(adminAuditLog);
+      const [audit] = await auditRows(listing.id);
       expect(audit).toMatchObject({
         action: 'deleted_listing',
         targetId: listing.id,
