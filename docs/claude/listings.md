@@ -59,7 +59,11 @@
 ## Unit privacy
 
 `getListingDetail` returns `unit` only to the owner, admins, and a renter with a conversation on
-that listing. It is never in Open Graph tags, cards, or `/me/listings`.
+that listing (it sets `conversationId`, the viewer's conversation as renter, which also drives the
+button below). The unit also shows in the thread header to both participants. It is never in Open
+Graph tags, cards, `/me/listings`, the inbox, or Realtime payloads (see `messaging.md`).
+
+A visitor who blocked the owner, or was blocked by them, gets a 404 for the listing.
 
 ## Distance
 
@@ -81,3 +85,6 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 `/listings/new`, `/listings/[id]/edit` (owner), `/me/listings` (owner; `?notice=` banners),
 `/[school]/listings/[id]` (public when public; `noindex`; Open Graph without the unit), `/[school]` (browse; see `search.md`),
 `/me/favorites` (signed in, onboarded; `noindex`).
+The listing page shows **Message host** to visitors (owners and admins see no button); it becomes
+**View conversation** when `conversationId` is set. `/messages`, `/messages/new?listing=<id>`, and
+`/messages/[id]` are described in `messaging.md`.

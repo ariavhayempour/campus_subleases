@@ -11,6 +11,22 @@
 - Webhooks: `signedClerkWebhook(payload)` signs a request with the test secret configured in
   `vitest.config.ts`; call the route's `POST` directly.
 
+## Messaging and Realtime tests
+
+- **Service tests mock the publisher.** `tests/services/messaging-send.test.ts` replaces
+  `@/server/realtime/publish` with `vi.fn()` so sends never touch Realtime; it asserts the calls
+  (recipient and sender, same event) and, with `mockRejectedValue`, that a failed publish does not
+  fail the send. Fixtures: `tests/helpers/messaging.ts` (`liveListing`, `insertConversation`,
+  `insertMessage`).
+- **Realtime integration tests** (`tests/realtime/publish.test.ts`) use the real local Realtime
+  service, so `supabase start` must include it (CI no longer excludes it). `tests/helpers/realtime.ts`
+  reads the URL, publishable key, and JWT secret from `supabase status`, refuses non-local hosts,
+  and signs a short-lived HS256 token locally (claims `sub`, `role: authenticated`) with
+  `node:crypto`, standing in for a Clerk token. They cover delivery to the owner of a channel,
+  refusal to join another user's channel, publishing with no subscriber, and the unreachable-host
+  error. A client must call `realtime.setAuth()` before joining a private channel.
+- **Policy test:** `tests/db/realtime-policy.test.ts` (see `database.md`).
+
 ## Storage
 
 - Storage tests use the local Supabase stack (`pnpm db:start`); `tests/local-supabase.ts` reads
@@ -56,4 +72,15 @@
   Clerk's button labels; `setupClerkTestingToken({ page })` must run first.
 - CI has no Mapbox token, so E2E never asserts on the map.
 - Playwright keeps traces on failure (`trace: 'retain-on-failure'`); CI retries once.
+- **Two-user messaging E2E** (`e2e/messaging.spec.ts`): host and renter sign in with
+  `E2E_CLERK_USER_EMAIL` and `E2E_CLERK_USER2_EMAIL` in separate browser contexts, each with its
+  own `setupClerkTestingToken`. The listing is seeded and approved by SQL
+  (`e2e/helpers/listings.ts`). Without either email the test is skipped locally and fails in CI.
+  The test sets a 90 s timeout (two sign-ins plus a multi-page flow). Live assertions (the host's
+  unread badge and the renter's incoming reply) use 15 s timeouts, since they depend on Realtime
+  delivery. The host waits on `/me/listings` so the badge must arrive without navigation.
+- **Cleanup:** `resetMessaging(userIds)` (`e2e/helpers/messaging.ts`) deletes conversations
+  (messages cascade) involving the users and the blocks between them. An `afterEach` runs the
+  independent steps (close contexts, `resetMessaging`, `removeListings`, `removeBrowseHost`) under
+  `Promise.allSettled` and reports every failure, so a failed step cannot skip the rest.
 - Default project is desktop Chrome (the site is desktop-first).

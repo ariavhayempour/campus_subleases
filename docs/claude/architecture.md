@@ -8,13 +8,15 @@ Drizzle), Supabase Storage and Realtime; Clerk auth; Mapbox; Sentry. Design spec
 
 ```
 app/                 routes, UI, server actions, /api/webhooks/clerk, /api/cron/*
-  _components/       shared app components (site header)
-  _lib/              app glue: action results, guards
+  _components/       shared app components (site header, MessagingProvider: the one Realtime
+                     subscription and unread count, mounted in the root layout)
+  _lib/              app glue: action results, guards, the
+                     browser Realtime subscription (realtime-client.ts)
 server/auth/         Clerk session → Actor (calls services only)
 server/services/     all business rules; the only importers of server/db
 server/db/           Drizzle schema, migrations, client
 server/storage/      Supabase Storage wrapper
-server/realtime/     Supabase Realtime wrapper (later)
+server/realtime/     Supabase Realtime wrapper (server-side broadcast)
 lib/validation/      Zod schemas shared by forms and services
 lib/                 framework-free helpers and constants (APP_NAME, reserved slugs, env)
 components/ui/       shadcn/ui components (generated; edit freely)
@@ -29,4 +31,4 @@ components/ui/       shadcn/ui components (generated; edit freely)
 - UI is desktop-first and responsive; admin pages are desktop-only.
 - Dependencies are limited to the approved list in the design spec.
 
-See also: `listings.md`, `search.md`, `storage.md`, `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`.
+See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`.

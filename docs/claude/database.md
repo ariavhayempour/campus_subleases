@@ -16,6 +16,14 @@ the `anon`/`authenticated` roles can read nothing. The server connects as `postg
 bypasses RLS. `tests/db/harness.test.ts` enforces both facts for every table. New tables must call
 `.enableRLS()` (the installed drizzle-orm has no `pgTable.withRLS` helper).
 
+### Realtime policy
+
+`realtime.messages` (Supabase's table behind Realtime) has exactly one policy, "users join their
+own channel": `for select to authenticated using (realtime.topic() = 'user:' || (select
+auth.jwt() ->> 'sub'))`. It was added by the custom migration `0006_realtime-user-channel-policy.sql`.
+`tests/db/realtime-policy.test.ts` pins it (exactly one policy on `realtime.messages`, command `SELECT`, role `authenticated`, and a
+`USING` expression containing the `'user:'` literal and `sub`), so a second policy fails the test. See `messaging.md`.
+
 ## PostGIS
 
 PostGIS lives in the `extensions` schema (Supabase convention; on the default search_path).
