@@ -14,6 +14,7 @@ import type { UserStatus } from './admin-listings';
 import { writeAudit } from './audit';
 import { Conflict, NotFound, parseInput } from './errors';
 import type { Participant } from './messaging-reads';
+import { isExpired } from './listing-sql';
 import { toMessageView } from './messaging';
 
 export type ReportView = AdminReportRow & {
@@ -32,6 +33,8 @@ export type ReportView = AdminReportRow & {
           schoolSlug: string;
           reviewStatus: ReviewStatus;
           status: ListingStatus;
+          reviewNote: string | null;
+          isExpired: boolean;
           ownerId: string;
           ownerName: string;
         } | null;
@@ -126,6 +129,8 @@ async function loadTarget(base: AdminReportRow, adminId: string): Promise<Report
             schoolSlug: schools.slug,
             reviewStatus: listings.reviewStatus,
             status: listings.status,
+            reviewNote: listings.reviewNote,
+            isExpired,
             ownerId: listings.ownerId,
             ownerName: users.displayName,
           })

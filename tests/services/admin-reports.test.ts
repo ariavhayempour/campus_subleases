@@ -196,6 +196,40 @@ describe('admin reports', () => {
       expect(view.target.type).toBe('listing');
     }));
 
+  it('returns review note and expiry for a listing target', () =>
+    withRollback(async () => {
+      const admin = actorFor((await createUser()).id, true);
+      const reporter = await createUser();
+      const owner = await createUser();
+      const school = await createSchool();
+      const rejected = await insertListing(owner.id, school.id, {
+        reviewStatus: 'rejected',
+        reviewNote: 'Photos are unclear',
+      });
+      const expired = await insertListing(owner.id, school.id, {
+        reviewStatus: 'approved',
+        availableFrom: '2000-01-01',
+        availableTo: '2000-06-01',
+      });
+      const rejectedReport = await insertReport({
+        reporterId: reporter.id,
+        targetType: 'listing',
+        targetId: rejected.id,
+      });
+      const expiredReport = await insertReport({
+        reporterId: reporter.id,
+        targetType: 'listing',
+        targetId: expired.id,
+      });
+      const a = (await getReport(admin, rejectedReport.id)).target;
+      const b = (await getReport(admin, expiredReport.id)).target;
+      expect(a.type === 'listing' && a.listing).toMatchObject({
+        reviewNote: 'Photos are unclear',
+        isExpired: false,
+      });
+      expect(b.type === 'listing' && b.listing).toMatchObject({ isExpired: true });
+    }));
+
   it('rejects missing or malformed ids', () =>
     withRollback(async () => {
       const admin = actorFor((await createUser()).id, true);

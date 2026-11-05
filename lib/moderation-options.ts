@@ -9,6 +9,13 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   harassment: 'Harassment',
   other: 'Something else',
 };
+export const REPORT_STATUS_LABELS = { open: 'Open', resolved: 'Resolved' } as const;
+export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
+  user: 'User',
+  listing: 'Listing',
+  message: 'Message',
+};
+export const USER_STATUS_LABELS = { active: 'Active', banned: 'Banned' } as const;
 export const REPORT_DETAILS_MAX = 1000;
 export const MAX_REPORTS_PER_DAY = 20;
 export const AUTO_HIDE_REPORTERS = 3;
