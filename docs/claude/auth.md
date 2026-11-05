@@ -5,9 +5,8 @@
 - **Webhook** `POST /api/webhooks/clerk` verifies the Svix signature with
   `CLERK_WEBHOOK_SIGNING_SECRET` (400 on failure) and handles `user.created`/`user.updated`
   (upsert first/last name, derived display name, and ban status; never touches the home
-  school) and `user.deleted`
-  (delete-if-exists, and best-effort deletion of the user's listing photo files). Duplicate
-  deliveries are harmless.
+  school) and `user.deleted` (delete-if-exists, and best-effort deletion of the user's listing
+  photo files). Duplicate deliveries are harmless.
 - **Lazy creation:** when the `users` row is missing (webhook delay; local dev, where webhooks
   don't reach localhost), `getActor()` reads the name with `currentUser()` and creates it.
 - **Display name:** always `formatDisplayName(first, last)` (`lib/display-name.ts`), e.g.
@@ -19,9 +18,9 @@
   `{ "metadata": "{{user.public_metadata}}" }` in every Clerk instance. A role change takes
   effect on the user's next token refresh (≤ 60 s).
 - **Clerk Backend API wrapper** (`server/clerk/users.ts`, the only module that calls the Backend
-  API for users): `getClerkAccount` (null on 404), `setClerkBan`, `deleteClerkAccount` (a 404 counts
-  as success). Called by `admin-users` (the admin flag on the user page, ban/unban) and `account`
-  (delete). `getActor` uses Clerk's `currentUser()` directly.
+  API for users): `getClerkAccount` (null on 404), `setClerkBan`, `deleteClerkAccount` (a 404
+  counts as success). Called by `admin-users` (the admin flag on the user page, ban/unban) and
+  `account` (delete). `getActor` uses Clerk's `currentUser()` directly.
 - **Ban mirroring:** Clerk owns the ban. After `setClerkBan` succeeds, `banUser`/`unbanUser` write
   the returned state to `users.status` through `syncUserFromClerk`, the same mapping the webhook
   uses; the webhook then confirms it. See `admin.md`.
@@ -53,4 +52,5 @@ code required; bot protection on; session-token customization above; webhook end
 `/api/webhooks/clerk` subscribed to `user.created`, `user.updated`, `user.deleted`
 (production + staging); admin role set on owners; Supabase integration activated (adds the
 `role: "authenticated"` claim) and the instance's Clerk domain added under Supabase Third-Party
-Auth (config file locally, dashboard for staging and production).
+Auth (config file locally, dashboard for staging and production). The production steps, with
+the other launch settings, are in `launch-checklist.md`.

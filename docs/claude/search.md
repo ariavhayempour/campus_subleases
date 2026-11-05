@@ -34,15 +34,26 @@
   restoration on Back lands at the old position; no scroll code is involved. On a reload the
   cards come back but the scroll position may not. Blocked storage means no restore.
 - **Map** (`browse-map-view.tsx`): Mapbox GeoJSON source clustering; pins for all matching
-  results (not only loaded cards); hovering a card highlights its pin unless the pin is inside a
-  cluster; clicking a pin opens a popup for every listing at that point: a mini-card (cover,
-  rent, title) for one, or "N listings here" with rent and title links for several. Panning never
-  re-queries; "Search this area" writes `bbox` (clamped to valid longitudes/latitudes, since a
-  map zoomed out past one world reports longitudes beyond ±180, then rounded to 5 decimals). A
-  popup whose listings are all filtered out is closed for good. The map stays mounted
-  across filter changes, so filter changes do not count as new Mapbox map loads. Without
-  `NEXT_PUBLIC_MAPBOX_TOKEN` (CI) the pane shows "Map unavailable".
+  results (not only loaded cards); hovering a card, or focusing its link with the keyboard,
+  highlights its pin unless the pin is inside a cluster; clicking a pin opens a popup for every
+  listing at that point: a mini-card (cover, rent, title) for one, or "N listings here" with rent
+  and title links for several. Panning never re-queries; "Search this area" writes `bbox`
+  (clamped to valid longitudes/latitudes, since a map zoomed out past one world reports
+  longitudes beyond ±180, then rounded to 5 decimals). A popup whose listings are all filtered
+  out is closed for good. The map stays mounted across filter changes, so filter changes do not
+  count as new Mapbox map loads. Without `NEXT_PUBLIC_MAPBOX_TOKEN` (CI) the pane shows "Map
+  unavailable".
 - Below 768px a "Show map / Show list" toggle switches panes.
+- **Phone map mount** (`browse-view.tsx`): `useMediaQuery('(min-width: 768px)')`
+  (`app/_lib/use-media-query.ts`, `useSyncExternalStore` over `matchMedia`, `false` on the
+  server) decides whether the viewport is desktop. Desktop always mounts the map, and once
+  mounted it stays mounted if the window later shrinks below 768px. Below 768px
+  Mapbox is not loaded until the first "Show map"; after that the map stays mounted while the
+  toggle switches panes. A URL with `bbox` opens on the map pane (and mounts it), since the
+  user came for that area. Until the map mounts, the pane holds a grey placeholder; because the
+  server snapshot is `false`, desktop also shows the placeholder until hydration.
+- **Tile markup**: the tile title is an `<h2>` (the page `<h1>` is the only heading above it, on
+  both `/[school]` and `/me/favorites`).
 
 ## Search rules (`server/services/search.ts`)
 
@@ -72,8 +83,11 @@ ST_MakeEnvelope(…, 4326)`.
   first. A saved listing that stops being public drops out and returns if it becomes public
   again; the `favorites` row is kept. The page shows at most the 200 most recently saved
   listings and has no paging.
-- `FavoriteButton` is icon-only on listing tiles (accessible name "Save listing", with
-  `aria-pressed`) and shows text on the listing detail page (name "Save"/"Saved"). Signed out, it
+- `FavoriteButton` is icon-only on listing tiles and shows text ("Save"/"Saved") on the listing
+  detail page. Both variants name their listing (`listingTitle` prop): `Save “{title}”` when
+  unsaved, `Remove “{title}” from saved` when saved. Each name contains the visible text, so
+  voice control still matches it. There is no `aria-pressed`, since the name already states the
+  action. Signed out, it
   is Clerk's `SignInButton` (redirect mode), which returns to the current page after sign-in.
   A failed or rejected save rolls the heart back and shows a visible `role="alert"` message
   (a small bubble under the heart on tiles, a line under the button on the detail page).
@@ -86,3 +100,19 @@ ST_MakeEnvelope(…, 4326)`.
   search already paged through (Back, reload, or applying the same filters again) shows the
   extra cards again after a moment.
 - Several listings in one building share one pin; clicking it lists them all.
+
+## Deferred
+
+Known gaps, left for after launch:
+
+- Accessibility: map pins are not keyboard-reachable; filter checkboxes lose focus after "Apply
+  filters" (the remounted form restores focus by control `id`, and the checkboxes have none).
+- Performance: the pin payload carries title and cover for up to 500 pins; the `bbox` filter
+  casts to `geometry`, so it cannot use the `geography` GiST index; toggling a heart may re-run
+  the browse queries.
+- Load-more restore: it is uncapped (a remembered count of hundreds fetches every page), and a
+  failed restore is silent (the list just stops at what loaded).
+- Small browse behaviours: owners see no Save button on their own listing's page; a keyword
+  made only of stop words matches nothing; no "Search this area" prompt appears after a cluster
+  zoom; how "More filters" opens and closes across searches is not settled; Back/Forward do not
+  restore the map camera.

@@ -1,7 +1,8 @@
 # Messaging
 
 Code: `server/services/messaging.ts` (writes), `messaging-reads.ts` (inbox, thread, unread count),
-`moderation.ts` (block/unblock, blocked-users list), `reports.ts` (reporting), `server/realtime/publish.ts`, `app/_lib/realtime-client.ts`,
+`moderation.ts` (block/unblock, blocked-users list), `reports.ts` (reporting),
+`server/realtime/publish.ts`, `app/_lib/realtime-client.ts`,
 `app/_components/messaging-provider.tsx`, `app/messages/`. Shared constants and types live in
 `lib/messaging-options.ts`; schemas in `lib/validation/messaging.ts`.
 
@@ -45,12 +46,12 @@ screens).
   `sendMessage` and `startConversation` (when a conversation exists) throw `Forbidden` with the
   matching text.
 
-| State          | When                                                   | Thread shows                           |
-| -------------- | ------------------------------------------------------ | -------------------------------------- |
-| `open`         | none of the below                                      | the composer                           |
-| `deleted_user` | the other participant's account was deleted            | "This account was deleted"             |
-| `you_blocked`  | the viewer blocked the other user                      | "You blocked this user", Unblock       |
-| `cannot_reply` | the other user blocked the viewer, or either is banned | "You can't reply to this conversation" |
+  - `open`: none of the below. The thread shows the composer.
+  - `deleted_user`: the other participant's account was deleted. Shows "This account was
+    deleted".
+  - `you_blocked`: the viewer blocked the other user. Shows "You blocked this user" and Unblock.
+  - `cannot_reply`: the other user blocked the viewer, or either is banned. Shows "You can't reply
+    to this conversation".
 
 A deleted account is checked first, then `you_blocked`, then `cannot_reply`. The blocked user is
 never told they were blocked: they see the generic `cannot_reply` text.
@@ -112,16 +113,22 @@ Live delivery is a convenience on top of the database, which is the source of tr
   (`userTopic`). Event name `message`.
 - **Policy:** one policy on `realtime.messages` lets an `authenticated` user `select` only when
   `realtime.topic() = 'user:' || (select auth.jwt() ->> 'sub')` (migration
-  `0006_realtime-user-channel-policy.sql`; see `database.md`). There is no insert policy, so browsers can listen on their own channel and
-  cannot send.
-- **Publish (server):** after the transaction commits, `publishToUser` (`server/realtime/publish.ts`)
-  creates a Supabase client with `SUPABASE_SECRET_KEY`, opens the private channel, and sends with
-  `httpSend` (an HTTP call, no socket kept open), then removes the channel. It publishes to the
+  `0006_realtime-user-channel-policy.sql`; see `database.md`). There is no insert policy, so
+  browsers can listen on their own channel and cannot send.
+- **Public access off:** the policy only guards private channels. A public join of `user:<id>`
+  is allowed but never receives the server's private broadcasts (`tests/realtime` proves this).
+  Production must still turn off the Realtime "Allow public access" setting so every channel
+  needs a valid token; see `launch-checklist.md`.
+- **Publish (server):** after the transaction commits, `publishToUser`
+  (`server/realtime/publish.ts`) creates a Supabase client with `SUPABASE_SECRET_KEY`, opens the
+  private channel, and sends with `httpSend` (an HTTP call, no socket kept open), then removes
+  the channel. It publishes to the
   recipient and to the sender (so their other tabs update); `publishMessage` also handles a null
   recipient by publishing to the sender only, which is defensive since sends to a deleted account
   are refused first. On failure it throws `Realtime publish failed for <topic>` with the cause.
-- **Event shape:** `{ type: 'message', conversationId, message: { id, conversationId, senderId, body, createdAt } }`
-  (`RealtimeEvent`). It never carries the listing, the unit, or a display name.
+- **Event shape:** `RealtimeEvent`, which is
+  `{ type: 'message', conversationId, message: { id, conversationId, senderId, body, createdAt } }`.
+  It never carries the listing, the unit, or a display name.
 - **Best-effort:** `publishMessage` runs after commit with `Promise.allSettled`; each failure goes
   to Sentry and nothing is rethrown, so a failed broadcast never fails a committed send.
 - **Subscribe (browser):** `MessagingProvider` (in the root layout, inside `ClerkProvider`) calls
@@ -133,12 +140,19 @@ Live delivery is a convenience on top of the database, which is the source of tr
 - **What an event does:** the provider refetches the unread count; an open thread merges the
   message (deduplicated by id) and, if the viewport was at the bottom, follows it; the inbox calls
   `router.refresh()`.
-- **Recovery:** on every `SUBSCRIBED` (the first join included, so events committed before the
-  join are caught) and on window `focus` or `visibilitychange` to visible (only these two are
-  coalesced to one per second), the provider refetches the unread
-  count, the open thread calls `router.refresh()` and merges the server window (seen messages are
-  never dropped), and the inbox refreshes. A message missed while offline therefore appears on
-  return.
+- **Recovery (resync):** on every `SUBSCRIBED` (the first join included, so events committed
+  before the join are caught) and on window `focus` or `visibilitychange` to visible (only these
+  two are coalesced to one per second), the provider refetches the unread count and emits a
+  resync. `ResyncRefresher` then calls `router.refresh()` once, which re-renders the inbox and the
+  open thread together; the thread merges the new server window on render (seen messages are
+  never dropped) and, if the tab is visible, marks the conversation read. A message missed while
+  offline therefore appears on return.
+- **One refresher per resync:** `ResyncRefresher` (mounted once in the `/messages` layout) is the
+  only resync listener that calls `router.refresh()`. The inbox and thread panel must not refresh
+  on resync themselves; each extra listener adds another RSC payload per tab return. Outside
+  `/messages` a resync only refetches the unread count.
+- **Refresh after a block action:** the thread menu and the composer-area Unblock run their
+  action through `useRefreshAfter`, which calls `router.refresh()` once when the result is `ok`.
 - **Without the publishable key** (or the Supabase URL), `subscribeToUserChannel` returns null:
   no socket, no live updates. The app still works through refetch on focus and navigation.
 - **Auth:** Realtime accepts the Clerk token through Supabase's Clerk third-party auth (see
@@ -205,3 +219,10 @@ Live delivery is a convenience on top of the database, which is the source of tr
   It is the dev instance's public Frontend API domain, not a secret.
 - **E2E uses two real Clerk test users** (`E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER2_EMAIL`). The
   listing is seeded and approved by SQL, as in earlier plans.
+
+## Known issues
+
+- **A visible open thread still gets two RSC payloads per resync.** `ResyncRefresher` sends one,
+  and the thread's mark-read (`markReadAction`) sends a second because it calls
+  `revalidatePath('/messages', 'layout')`, which re-renders the current route in the action
+  response. Mark-read needs that revalidation so the inbox drops the unread dot.

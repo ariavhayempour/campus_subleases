@@ -7,8 +7,10 @@ Drizzle), Supabase Storage and Realtime; Clerk auth; Mapbox; Sentry. Design spec
 ## Layers
 
 ```
-app/                 routes, UI, server actions, /api/webhooks/clerk, /api/cron/*
-  admin/             admin pages (listings, reports, users, conversations, stats, audit); desktop-only
+app/                 routes, UI, server actions, /api/webhooks/clerk, /api/cron/cleanup
+                     (daily storage sweep, see storage.md)
+  admin/             admin pages (listings, reports, users, conversations, stats, audit);
+                     desktop-only
   _components/       shared app components (site header, MessagingProvider: the one Realtime
                      subscription and unread count, mounted in the root layout)
   _lib/              app glue: action results, guards, the
@@ -33,4 +35,5 @@ components/ui/       shadcn/ui components (generated; edit freely)
 - UI is desktop-first and responsive; admin pages are desktop-only.
 - Dependencies are limited to the approved list in the design spec.
 
-See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`, `auth.md`, `testing.md`, `environment.md`, `site-pages.md`, `moderation.md`, `admin.md`.
+See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`,
+`auth.md`, `testing.md`, `environment.md`, `site-pages.md`, `moderation.md`, `admin.md`.

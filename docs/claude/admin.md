@@ -1,10 +1,10 @@
 # Admin
 
 Code: `server/services/admin-listings.ts`, `admin-users.ts`, `admin-reports.ts`,
-`admin-conversations.ts`, `admin-stats.ts`, `audit.ts`; `app/admin/`; `app/_components/admin-nav-link.tsx`;
-`app/_lib/guards.ts`. Shared constants, schemas, and copy: `lib/moderation-options.ts`,
-`lib/validation/moderation.ts`, `lib/audit-labels.ts`. User-facing reporting and blocking are in
-`moderation.md`. Admin pages are desktop-only (`min-w-[64rem]`).
+`admin-conversations.ts`, `admin-stats.ts`, `audit.ts`; `app/admin/`;
+`app/_components/admin-nav-link.tsx`; `app/_lib/guards.ts`. Shared constants, schemas, and copy:
+`lib/moderation-options.ts`, `lib/validation/moderation.ts`, `lib/audit-labels.ts`. User-facing
+reporting and blocking are in `moderation.md`. Admin pages are desktop-only (`min-w-[64rem]`).
 
 ## Access
 
@@ -15,8 +15,9 @@ Code: `server/services/admin-listings.ts`, `admin-users.ts`, `admin-reports.ts`,
   ("Sign in required" for anonymous actors, "Admins only" for signed-in non-admins).
 - **Pages:** `app/admin/layout.tsx` calls `requireAdminPage()`, which returns a 404 (`notFound()`)
   for anyone who is not a signed-in admin, so the routes' existence is hidden. Pages that call
-  admin services wrap them in `orAdminNotFound()`, which maps both `NotFound` and `Forbidden` to 404. The admin user page also calls
-  `requireAdminPage()` itself because it needs the viewer's id.
+  admin services wrap them in `orAdminNotFound()`, which maps both `NotFound` and `Forbidden` to
+  the 404 page. The admin user page also calls `requireAdminPage()` itself because it needs the
+  viewer's id.
 - **Nav:** the site header shows **Admin** only to admins (`AdminNavLink`), with a badge of pending
   listings plus open reports; its `aria-label` reads "Admin, N to review". The admin sidebar links:
   Overview, Listings, Reports, Stats, Audit log.
@@ -25,40 +26,48 @@ Code: `server/services/admin-listings.ts`, `admin-users.ts`, `admin-reports.ts`,
 
 ## Pages
 
-| Route                       | What it shows                                                                                 |
-| --------------------------- | --------------------------------------------------------------------------------------------- |
-| `/admin`                    | Overview: pending-listing and open-report counts (linked), the 10 most recent audit rows      |
-| `/admin/listings`           | Tabs Pending, Approved, Hidden, Rejected (`?tab=`), school filter (`?school=`); flags per row |
-| `/admin/listings/[id]`      | Listing preview, owner, review actions, reports on it, history (audit rows)                   |
-| `/admin/reports`            | Report queue; filters status (Open default, Resolved, All), school, reason                    |
-| `/admin/reports/[id]`       | Report details, resolution, the reported target, and the Resolve form for open reports        |
-| `/admin/users/[id]`         | User status, Ban/Unban, listings, conversations, reports received and filed, history          |
-| `/admin/conversations/[id]` | Read-only thread, "Admin view: read-only. This view is logged."                               |
-| `/admin/stats`              | Trial stats per active school (`?from=&to=`)                                                  |
-| `/admin/audit`              | The latest 200 audit rows                                                                     |
+| Route                       | What it shows                                                    |
+| --------------------------- | ---------------------------------------------------------------- |
+| `/admin`                    | Pending-listing and open-report counts, the 10 latest audit rows |
+| `/admin/listings`           | Tabs Pending, Approved, Hidden, Rejected (`?tab=`), `?school=`   |
+| `/admin/listings/[id]`      | Preview, owner, review actions, reports on it, history           |
+| `/admin/reports`            | Report queue; filters status (Open default), school, reason      |
+| `/admin/reports/[id]`       | Report, resolution, the reported target, Resolve form when open  |
+| `/admin/users/[id]`         | Status, Ban/Unban, listings, conversations, reports, history     |
+| `/admin/conversations/[id]` | Read-only thread, "Admin view: read-only. This view is logged."  |
+| `/admin/stats`              | Trial stats per active school (`?from=&to=`)                     |
+| `/admin/audit`              | The latest 200 audit rows                                        |
 
-- Listing rows flag "Auto-hidden", "Far from campus: N.N km" (beyond the school's `warn_radius_km`),
-  and "N open report(s)". The Pending tab is oldest first ("Submitted"); the others are most recently
-  updated first.
+- Listing rows flag "Auto-hidden", "Far from campus: N.N km" (beyond the school's
+  `warn_radius_km`), and "N open report(s)". The Pending tab is oldest first ("Submitted"); the
+  others are most recently updated first.
 - A report page shows a target that no longer exists as "This listing/user/message no longer
   exists."; a deleted reporter, sender, or admin shows as "Deleted user" (or "a removed admin" for
   a resolver) on report, user, and conversation pages.
+- **Conversation back link:** a link to `/admin/conversations/[id]` carries where it came from in
+  `?from=`: `report:{reportId}` gives "Back to report" (`/admin/reports/{reportId}`), and
+  `user:{userId}` gives "Back to user" (`/admin/users/{userId}`). The page parses it with
+  `conversationFromSchema` (`lib/validation/moderation.ts`: a report id must be a UUID, a user id a
+  Clerk id). A missing or invalid value falls back to "Back to reports" (`/admin/reports`). The
+  user page's conversation links set `from=user:{id}`; audit-row links set nothing. Report pages
+  don't link out to the conversation today; message reports show the thread inline. The back link
+  uses `prefetch={false}` like the other admin links.
 - Admin pages are `noindex`.
 
 ## Review transitions
 
 Any other starting state gives `Conflict`, "This listing's review status changed — reload".
 
-| Action  | From                 | To         | Note                              | Audit action       |
-| ------- | -------------------- | ---------- | --------------------------------- | ------------------ |
-| Approve | `pending`            | `approved` | clears `review_note`              | `approved_listing` |
-| Reject  | `pending`            | `rejected` | required note, 1–1,000 characters | `rejected_listing` |
-| Hide    | `approved`, `hidden` | `hidden`   | keeps `review_note`               | `hid_listing`      |
-| Unhide  | `hidden`             | `approved` | clears `review_note`              | `unhid_listing`    |
-| Delete  | any state            | row gone   | needs `DELETE` typed              | `deleted_listing`  |
+| Action  | From                 | To         | Note                         | Audit action       |
+| ------- | -------------------- | ---------- | ---------------------------- | ------------------ |
+| Approve | `pending`            | `approved` | clears `review_note`         | `approved_listing` |
+| Reject  | `pending`            | `rejected` | required note, 1–1,000 chars | `rejected_listing` |
+| Hide    | `approved`, `hidden` | `hidden`   | keeps `review_note`          | `hid_listing`      |
+| Unhide  | `hidden`             | `approved` | clears `review_note`         | `unhid_listing`    |
+| Delete  | any state            | row gone   | needs `DELETE` typed         | `deleted_listing`  |
 
-- Approve, Reject, Hide, and Unhide set `reviewed_by` and `reviewed_at` (the database `now()`), which
-  resets the auto-hide count (see `moderation.md`). Each runs in one transaction under
+- Approve, Reject, Hide, and Unhide set `reviewed_by` and `reviewed_at` (the database `now()`),
+  which resets the auto-hide count (see `moderation.md`). Each runs in one transaction under
   `FOR UPDATE` on the listing and writes its audit row in the same transaction.
 - Reject's note is shown to the owner; a blank one gives "Give the owner a reason", over 1,000
   characters "Keep the reason under 1,000 characters".
@@ -70,7 +79,9 @@ Any other starting state gives `Conflict`, "This listing's review status changed
   keeps `title`, `ownerId`, and `schoolSlug`. After deleting, the admin is redirected to
   `/admin/listings`.
 - Every decision action revalidates the `/admin` layout, the public listing page, and
-  `/me/listings`.
+  `/me/listings`. The review buttons do not call `router.refresh()`: a server action that calls
+  `revalidatePath` already returns the re-rendered page, so a second refresh would only render it
+  (and, on pages that show a thread, log a view) twice.
 
 ## Stale checks
 
@@ -87,23 +98,28 @@ Any other starting state gives `Conflict`, "This listing's review status changed
 
 ## Ban and unban
 
-- `/admin/users/[id]` → **Ban user** / **Unban user** (browser `confirm()`: "Ban {name}? They will be
-  signed out and their listings hidden." / "Unban {name}?"). Hidden for yourself and for admins.
-- `banUser` / `unbanUser` (`admin-users.ts`): refuse yourself (`Forbidden`, "You can't ban yourself" /
-  "You can't unban yourself"); read the Clerk account (`getClerkAccount`; missing gives `NotFound`,
-  "User not found"); refuse admins ("Admins can't be banned" / "Admins can't be unbanned").
+- `/admin/users/[id]` → **Ban user** / **Unban user** (browser `confirm()`: "Ban {name}? They will
+  be signed out and their listings hidden." / "Unban {name}?"). Hidden for yourself and for admins.
+  The action revalidates the `/admin` layout, which re-renders the page with the new status; the
+  button does not call `router.refresh()`.
+- `banUser` / `unbanUser` (`admin-users.ts`): validate the id with `banSchema` (a Clerk `user_…`
+  id; anything else gives a `ValidationError`, "Invalid user"); refuse yourself (`Forbidden`, "You
+  can't ban yourself" / "You can't unban yourself"); read the Clerk account (`getClerkAccount`;
+  missing gives `NotFound`, "User not found"); refuse admins ("Admins can't be banned" / "Admins
+  can't be unbanned").
 - **Clerk first, then the local mirror:** `setClerkBan` (`server/clerk/users.ts`) bans or unbans in
   Clerk; the service then writes the returned state into `users.status` with `syncUserFromClerk`,
   the same mapping the webhook uses, and the audit row (`banned_user` / `unbanned_user`,
   snapshot `displayName`), in one transaction under the user's messaging lock. The webhook's
-  `user.updated` then confirms it idempotently. The immediate mirror exists because webhooks never
-  reach local development, which could otherwise not ban anyone.
-- **Already in the requested state:** the Clerk call is skipped when Clerk already matches. The audit
-  row is written whenever the local `users.status` actually changes (read under the lock), so a
-  double submit leaves one row and a retry after a failed local transaction still logs the ban.
-- If Clerk fails, nothing changes locally. The user page reads the target's admin flag from Clerk to
-  hide the buttons; if Clerk is unreachable the flag is unknown and the buttons show, but the service
-  re-checks on every ban.
+  `user.updated` then confirms it idempotently. The immediate mirror exists because webhooks
+  never reach local development, which could otherwise not ban anyone.
+- **Already in the requested state:** the Clerk call is skipped when Clerk already matches. The
+  audit row is written whenever the local `users.status` actually changes (read under the lock),
+  so a double submit leaves one row and a retry after a failed local transaction still logs the
+  ban.
+- If Clerk fails, nothing changes locally. The user page reads the target's admin flag from Clerk
+  to hide the buttons; if Clerk is unreachable the flag is unknown and the buttons show, but the
+  service re-checks on every ban.
 - A banned user has no public listings (the owner must be active), cannot send messages, and
   appears to the other side as "You can't reply to this conversation" (see `messaging.md`).
 
@@ -114,9 +130,9 @@ Any other starting state gives `Conflict`, "This listing's review status changed
   listing is gone), or a user's home school.
 - **Resolve** needs a note ("Add a resolution note"; up to 1,000, "Keep the note under 1,000
   characters") and takes no action on the target. A second resolve gives `Conflict`, "This report
-  is already resolved". It writes `resolved_report` with the note in the snapshot and revalidates the
-  `/admin` layout; the form does not call `router.refresh()`, so one resolve logs one conversation
-  view.
+  is already resolved". It writes `resolved_report` with the note in the snapshot and revalidates
+  the `/admin` layout; the form does not call `router.refresh()`, so one resolve logs one
+  conversation view.
 - A message report shows the thread inside the report (this counts as a view, see Audit log). If
   the reported message is older than the 1,000-message window, it is shown separately above the
   thread.
@@ -132,6 +148,10 @@ Any other starting state gives `Conflict`, "This listing's review status changed
   listing, `deleted_listing` Deleted listing, `resolved_report` Resolved report (snapshot: note),
   `banned_user` Banned user, `unbanned_user` Unbanned user, `viewed_conversation` Viewed
   conversation.
+- **Actor labels** (`auditActorLabel` in `lib/moderation-options.ts`), used by the audit table and
+  the listing and user history lists: the admin's name when the admin still exists; "System" for
+  an `auto_hid_listing` row, the only action written without an admin; "Deleted admin" for any
+  other row whose `admin_id` is null, because that admin's account was deleted.
 - **Every render of an admin conversation writes a `viewed_conversation` row**, inside the same
   transaction as the read (`loadAdminConversation`). A report page that shows a message inside its
   conversation counts. So admin links to reports, users, conversations, and the admin nav use
@@ -139,7 +159,8 @@ Any other starting state gives `Conflict`, "This listing's review status changed
 - `writeAudit(executor, entry)` runs on the caller's executor, so the audit row commits or rolls
   back with the action. `listAuditFor` gives one target's history (oldest first); `listAuditLog`
   gives the latest 200 for `/admin/audit`.
-- `/admin/audit` is a plain list of the latest 200 audit rows, newest first, with no filters or paging.
+- `/admin/audit` is a plain list of the latest 200 audit rows, newest first, with no filters or
+  paging.
 
 ## Stats
 
@@ -208,9 +229,11 @@ as approved.
 
 ## Known issues
 
-- **Audit rows for a deleted listing still link to its page, which is now a 404.** Rows that target
-  the listing (approve, reject, hide, unhide, auto-hide) keep linking to `/admin/listings/[id]`; only
-  the `deleted_listing` row itself is unlinked. `resolved_report` rows target the report, which still
-  exists. The `deleted_listing` snapshot (title, owner, school) is the record. Deferred.
-- **Audit rows for a deleted user link to a 404 too:** `banned_user` and `unbanned_user` rows link
-  to `/admin/users/[id]`, which is gone once the account is deleted. Deferred.
+- **Audit rows of a deleted target link to a 404.**
+  - A deleted listing: rows that target the listing (approve, reject, hide, unhide, auto-hide)
+    keep linking to `/admin/listings/[id]`; only the `deleted_listing` row itself is unlinked.
+    `resolved_report` rows target the report, which still exists. The `deleted_listing` snapshot
+    (title, owner, school) is the record.
+  - A deleted user: `banned_user` and `unbanned_user` rows link to `/admin/users/[id]`, which is
+    gone once the account is deleted.
+  - Deferred.

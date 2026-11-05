@@ -16,25 +16,29 @@ has no automatic backups — `pg_dump` production before any risky migration.
 Vercel holds staging (Preview) and production values; staging and production need
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for live message delivery (without it the app still works
 through refetch on focus). Adding a variable needs owner approval.
+The pre-launch settings for every service are in `launch-checklist.md`.
 Locally, `NEXT_PUBLIC_MAPBOX_TOKEN` is the Mapbox default public token (no URL restriction, since
 new tokens need a card on the account). Follow-up: create URL-restricted tokens for preview and
 production.
 
-| Variable                                                           | Scope                 | Used by                                                                            |
-| ------------------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`            | public / secret       | Clerk                                                                              |
-| `CLERK_WEBHOOK_SIGNING_SECRET`                                     | secret                | `/api/webhooks/clerk`                                                              |
-| `DATABASE_URL`                                                     | secret                | Runtime (transaction pooler)                                                       |
-| `DATABASE_DIRECT_URL`                                              | secret                | `pnpm db:migrate`                                                                  |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public                | Storage (server, URL only); browser Realtime subscription (with the Clerk token)   |
-| `SUPABASE_SECRET_KEY`                                              | secret                | Storage (server); Realtime broadcast via `httpSend` (server)                       |
-| `NEXT_PUBLIC_MAPBOX_TOKEN`                                         | public                | Address search and maps (public token; URL-restrict per environment when possible) |
-| `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`                      | public / build secret | Sentry                                                                             |
-| `CRON_SECRET`                                                      | secret                | `/api/cron/*` (later)                                                              |
-| `NEXT_PUBLIC_SITE_URL`                                             | public                | Absolute URLs in robots.txt and sitemap.xml (see `site-pages.md`)                  |
-| `E2E_CLERK_USER_EMAIL`                                             | test only             | Playwright (a `+clerk_test` user; signs in by email code)                          |
-| `E2E_CLERK_USER2_EMAIL`                                            | test only             | Playwright messaging test (a second `+clerk_test` user)                            |
-| `E2E_CLERK_ADMIN_EMAIL`                                            | test only             | Playwright admin tests (a `+clerk_test` user with `publicMetadata.role = "admin"`) |
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` (public / secret): Clerk
+- `CLERK_WEBHOOK_SIGNING_SECRET` (secret): `/api/webhooks/clerk`
+- `DATABASE_URL` (secret): Runtime (transaction pooler)
+- `DATABASE_DIRECT_URL` (secret): `pnpm db:migrate`
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (public): Storage (server, URL
+  only); browser Realtime subscription (with the Clerk token)
+- `SUPABASE_SECRET_KEY` (secret): Storage (server); Realtime broadcast via `httpSend` (server)
+- `NEXT_PUBLIC_MAPBOX_TOKEN` (public): Address search and maps (public token; URL-restrict per
+  environment when possible)
+- `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN` (public / build secret): Sentry; `SENTRY_AUTH_TOKEN`
+  is the source-map upload at build (optional, uploads skipped when unset)
+- `CRON_SECRET` (secret): `/api/cron/cleanup` (daily storage cleanup; Vercel sends it as a bearer
+  token)
+- `NEXT_PUBLIC_SITE_URL` (public): Absolute URLs in robots.txt and sitemap.xml (see `site-pages.md`)
+- `E2E_CLERK_USER_EMAIL` (test only): Playwright (a `+clerk_test` user; signs in by email code)
+- `E2E_CLERK_USER2_EMAIL` (test only): Playwright messaging test (a second `+clerk_test` user)
+- `E2E_CLERK_ADMIN_EMAIL` (test only): Playwright admin tests (a `+clerk_test` user with
+  `publicMetadata.role = "admin"`)
 
 ## CI (GitHub Actions)
 
@@ -53,20 +57,20 @@ production.
 
 Repository secrets (Settings → Secrets and variables → Actions):
 
-| Name                                | Value                                                                           |
-| ----------------------------------- | ------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_test_<dev-instance>` (Clerk dev instance → API keys)                        |
-| `CLERK_SECRET_KEY`                  | `sk_test_<dev-instance>` (Clerk dev instance → API keys)                        |
-| `E2E_CLERK_USER_EMAIL`              | `<name>+clerk_test@example.com` (an existing dev-instance user)                 |
-| `E2E_CLERK_USER2_EMAIL`             | `<other-name>+clerk_test@example.com` (a second, different dev-instance user)   |
-| `E2E_CLERK_ADMIN_EMAIL`             | `<name>+clerk_test_admin@example.com` (dev-instance user with role `admin`)     |
-| `STAGING_DATABASE_DIRECT_URL`       | `postgresql://postgres.<staging-ref>:<db-password>@<pooler-host>:5432/postgres` |
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: `pk_test_<dev-instance>` (Clerk dev instance → API keys)
+- `CLERK_SECRET_KEY`: `sk_test_<dev-instance>` (Clerk dev instance → API keys)
+- `E2E_CLERK_USER_EMAIL`: `<name>+clerk_test@example.com` (an existing dev-instance user)
+- `E2E_CLERK_USER2_EMAIL`: `<other-name>+clerk_test@example.com` (a second, different dev-instance
+  user)
+- `E2E_CLERK_ADMIN_EMAIL`: `<name>+clerk_test_admin@example.com` (dev-instance user with role
+  `admin`)
+- `STAGING_DATABASE_DIRECT_URL`:
+  `postgresql://postgres.<staging-ref>:<db-password>@<pooler-host>:5432/postgres`
 
 Environment secret (Settings → Environments → `production`; the name must match `migrate.yml`):
 
-| Name                             | Value                                                                              |
-| -------------------------------- | ---------------------------------------------------------------------------------- |
-| `PRODUCTION_DATABASE_DIRECT_URL` | `postgresql://postgres.<production-ref>:<db-password>@<pooler-host>:5432/postgres` |
+- `PRODUCTION_DATABASE_DIRECT_URL`:
+  `postgresql://postgres.<production-ref>:<db-password>@<pooler-host>:5432/postgres`
 
 Database URLs: Supabase dashboard → Connect → **Session pooler** (port 5432). Not the direct
 connection (`db.<ref>.supabase.co` is IPv6-only and GitHub runners have no IPv6), and not the
