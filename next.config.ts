@@ -12,7 +12,7 @@ export default withSentryConfig(nextConfig, {
   project: 'campus-subleases',
   authToken: process.env.SENTRY_AUTH_TOKEN,
   widenClientFileUpload: true,
-  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN, deleteSourcemapsAfterUpload: true },
   silent: !process.env.CI,
   telemetry: false,
 });
