@@ -162,7 +162,7 @@ Each school's pages wear that school the way its athletic department would: soli
 
 The system is data-driven by design. No school palette lives in code: every school role is a CSS custom property set on `<html>` from the school's `theme` row (see `lib/school-theme.ts` and `docs/design-system.md`). The tokens in the frontmatter for the `school-*` roles are the neutral fallback, which is also what admin and the signed-out landing at `/` wear. Density is moderate and operational: browse is a photo grid beside a sticky map, forms and admin are dense and calm.
 
-The signed-out landing at `/` is neutral ink: an ink header running straight into an ink hero, then white sections below. Its only school color is the School Ribbon, where each block is dressed in its own school's colors (behavior in `docs/site-pages.md`, "Landing page (`/`)").
+The signed-out landing at `/` is "school-lit ink": an ink header running straight into an ink hero lit by soft, drifting glows in every school's color, then white sections below that wear one school's colors at a time, chosen by the visitor from the term example. The School Ribbon dresses each block in its own school, and the closing band carries a strip of every school's colors (behavior in `docs/site-pages.md`, "Landing page (`/`)").
 
 **Key Characteristics:**
 
@@ -324,12 +324,23 @@ The browse page's hero: school field, the short name at Display size, a sub-line
 
 ### School Ribbon
 
-The landing's roll call of schools, and its one authored motion: one solid school-primary block per active school, read from data so it scales to any number of schools, each block dressed with `schoolThemeStyle(theme)`.
+The landing's roll call of schools: one solid school-primary block per active school, read from data so it scales to any number of schools, each block dressed with `schoolThemeStyle(theme)`.
 
 - **Block:** 16.5rem × 10rem on phones, 18.75rem × 12rem from 640px, 20px padding on top and sides, separated by 6px gaps that show the ink beneath. Square corners.
 - **Content:** school short name in Big Shoulders 900 caps (2.25rem, 2.75rem from 640px); a 14px line with the city left and "Browse" plus an arrow right (600); the full double varsity stripe in the school secondary at the block's foot, 16px up from the bottom edge.
 - **States:** hover deepens to school-deep (300ms) and nudges the arrow 2px right; focus draws the ring inset (−4px offset) in the school secondary.
-- **Motion:** the row drifts left at 32px/s by moving `scrollLeft`, looping through repeated copies (repeats are hidden from the tab order and accessibility tree). It pauses while hovered, focused, touched, or the tab is hidden, and with a Pause / Play button (36px, white/55% border, on-school treatment) beside the label line. Paused, the row shows a thin white/45% scrollbar so it can be scrolled by hand; playing, the scrollbar is hidden. Under reduced motion it renders as a still auto-fit grid of the same blocks with no Pause button.
+- **Entrance:** on load the blocks rise in from a bottom clip (0.8s, 70ms stagger, starting at 0.75s), and the drift waits 1.6s for them.
+- **Motion:** the row drifts left at 32px/s by moving `scrollLeft`, looping through repeated copies (repeats are hidden from the tab order and accessibility tree). It pauses while hovered, focused, touched, or the tab is hidden, and with a Pause / Play button (36px, white/55% border, on-school treatment) beside the label line; the button also pauses the hero's School Lights. Paused, the row shows a thin white/45% scrollbar so it can be scrolled by hand; playing, the scrollbar is hidden. Under reduced motion it renders as a still auto-fit grid of the same blocks with no Pause button.
+
+### School Lights
+
+The landing hero's atmosphere: one blurred radial glow per active school (up to four), blended with `screen` over ink, drifting on slow 23–31s loops, under a 6% film grain. Each glow takes `schoolGlowColor(theme)`: the primary, or the secondary when the primary is near-black (Michigan navy lights in maize). The glow layer fades in from transparent over the top 7rem so it never cuts a line under the header. The headline's second line is hollow (white stroke, 1.5–2.5px) so the lights show through the letters. The closing band repeats a single glow in the accent school. Glows pause with the ribbon's Pause button and hold still under reduced motion.
+
+### Landing Accent and Reveals
+
+Below the hero, the landing wears one school at a time. The term example carries a row of school chips (each in its own primary, 2px corners, Big Shoulders caps; the pressed chip gets a 2px tint gap and a 2px ink ring plus a secondary-color underline). Choosing one re-themes everything below the hero through `schoolThemeStyle`, with 450–500ms color transitions: the example's tint field, both term bars, the Same months tag (highlight pair), the Leaving / Looking links (`school-link`), the step rules and numerals, the promise checks, and the closing glow. The closing band's account button stays neutral white on ink whatever the accent.
+
+Each content block plays one entrance tied to its meaning, once, when it scrolls in: the two term bars draw toward each other (host from the left, guest from the right, hatched so the two differ by pattern) and then the Same months tag lands; the step rules draw left to right and each numeral fills from a line-2 outline in sequence; the promise rows rise in a short stagger; the closing strip's school segments wipe in. Picking another school replays the bars. Blocks already on screen at load, and every block under reduced motion, render in their finished state.
 
 ### Map Pins
 
@@ -353,3 +364,4 @@ Rent pills (rounded 3px, with a pointer) in the school primary, the hovered pin 
 - **Don't** set Archivo in all caps, or set body copy in Big Shoulders.
 - **Don't** add new shadow values; use the vocabulary above.
 - **Don't** ship moving content that cannot be stopped; anything that drifts follows the School Ribbon's rules (pause on hover, focus, touch, hidden tab, and a button; still under reduced motion).
+- **Don't** hide content until a script runs; scroll reveals start from the rendered, visible state and only arm blocks that are still off screen.
