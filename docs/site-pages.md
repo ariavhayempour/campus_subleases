@@ -116,9 +116,22 @@ until half the row covers a 2560px screen, then the row scrolls itself sideways 
 at the halfway point, which makes the loop seamless. Only the first copy is in the accessibility
 tree and tab order (repeats are `aria-hidden` with `tabIndex={-1}`, but stay clickable). Motion stops while the pointer is over
 the row, while anything in it has focus, during a touch, when the tab is hidden, and when the
-visitor presses **Pause**. While paused it shows a thin scrollbar. Under `prefers-reduced-motion` it renders one copy
+visitor presses **Pause**, which also pauses the hero's school lights. While paused it shows a thin scrollbar. Under `prefers-reduced-motion` it renders one copy
 as a wrapping grid that shows every school, with no Pause button. It moves `scrollLeft` rather than a CSS transform, so focus
 and manual scrolling bring any block into view.
+
+**School lights and accent.** The hero draws one glow per active school (up to four) behind the
+headline, colored by `schoolGlowColor` in `lib/school-theme.ts`. Everything below the hero sits in
+`LandingAccent` (`app/_components/landing-accent.tsx`), which holds one chosen school (the first by
+name to start) and spreads its `schoolThemeStyle` over those sections. The chips in the term example
+(`app/_components/term-match.tsx`) switch it; with one school the chips are hidden.
+
+**Reveals.** `LandingReveal` (`app/_components/landing-reveal.tsx`) finds every `[data-reveal]` block
+after hydration and, for blocks still below the fold, sets `data-reveal="armed"` (the hidden start
+state in `app/globals.css`), then `"in"` when the block scrolls into view. Blocks already on screen are
+left alone, nothing is armed under `prefers-reduced-motion`, and without JavaScript every block simply
+renders finished. The term example replays its bars on a school change by snapping to
+`data-reveal="reset"` and back to `"in"`.
 
 The header's bottom stripe is hidden on `/` for signed-out visitors so the ink header runs
 straight into the ink hero (`HeaderStripe` in `app/_components/header-brand.tsx`).

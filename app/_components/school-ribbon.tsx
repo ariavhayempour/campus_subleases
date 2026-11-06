@@ -2,7 +2,7 @@
 
 import { ArrowRight, Pause, Play } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useMediaQuery } from '@/app/_lib/use-media-query';
 import { schoolThemeStyle } from '@/lib/school-theme';
 import { cn } from '@/lib/utils';
@@ -17,21 +17,32 @@ type RibbonSchool = Pick<
 const BLOCK_PX = 306;
 const COVER_PX = 2560;
 const SPEED_PX_PER_S = 32;
+// Holds the drift until the blocks have finished rising in.
+const START_DELAY_MS = 1600;
 
 export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: string }) {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [paused, setPaused] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLElement>(null);
+  const mountedAt = useRef(0);
   const holding = useRef({ hover: false, focus: false, touch: false });
 
   const half = Math.max(1, Math.ceil(COVER_PX / (Math.max(schools.length, 1) * BLOCK_PX)));
   const copies = half * 2;
+
+  // Pause also stills the school lights drawn by the surrounding hero.
+  useEffect(() => {
+    root.current?.closest('[data-lights]')?.toggleAttribute('data-paused', paused);
+  }, [paused]);
 
   useEffect(() => {
     const el = scroller.current;
     if (!el || reducedMotion || paused) return;
     let frame = 0;
     let last = performance.now();
+    if (!mountedAt.current) mountedAt.current = last;
+    const startAt = mountedAt.current + START_DELAY_MS;
     let pos = el.scrollLeft;
     const tick = (now: number) => {
       const dt = Math.min(now - last, 64);
@@ -39,7 +50,14 @@ export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: st
       const held = holding.current;
       // Picks up any manual scroll (trackpad, swipe, focus) before moving on from there.
       if (Math.abs(el.scrollLeft - Math.round(pos)) > 1) pos = el.scrollLeft;
-      if (!held.hover && !held.focus && !held.touch && document.visibilityState === 'visible') {
+      const ready = now >= startAt;
+      if (
+        ready &&
+        !held.hover &&
+        !held.focus &&
+        !held.touch &&
+        document.visibilityState === 'visible'
+      ) {
         const wrapAt = el.scrollWidth / 2;
         pos += (SPEED_PX_PER_S * dt) / 1000;
         if (pos >= wrapAt) pos -= wrapAt;
@@ -58,8 +76,8 @@ export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: st
   };
 
   return (
-    <nav id={id} aria-labelledby="school-ribbon-label" className="scroll-mt-24">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 pb-4 sm:px-6 lg:px-8">
+    <nav ref={root} id={id} aria-labelledby="school-ribbon-label" className="scroll-mt-24">
+      <div className="landing-enter-late mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 pb-4 sm:px-6 lg:px-8">
         <p id="school-ribbon-label" className="text-sm text-white/80">
           <span className="font-semibold text-white">Browse any school now.</span> Sign up to save
           listings and message hosts.
@@ -68,7 +86,9 @@ export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: st
           <button
             type="button"
             onClick={() => setPaused((value) => !value)}
-            aria-label={paused ? 'Play the school ribbon' : 'Pause the school ribbon'}
+            aria-label={
+              paused ? 'Play the school ribbon and lights' : 'Pause the school ribbon and lights'
+            }
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-white/55 px-3 text-[13px] font-semibold text-white transition-colors hover:bg-white/10"
           >
             {paused ? (
@@ -82,8 +102,8 @@ export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: st
       </div>
       {reducedMotion ? (
         <ul className="grid grid-cols-[repeat(auto-fit,minmax(16.5rem,1fr))] gap-1.5 sm:grid-cols-[repeat(auto-fit,minmax(18.75rem,1fr))]">
-          {schools.map((school) => (
-            <RibbonBlock key={school.slug} school={school} />
+          {schools.map((school, index) => (
+            <RibbonBlock key={school.slug} school={school} order={index} />
           ))}
         </ul>
       ) : (
@@ -106,10 +126,11 @@ export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: st
           {Array.from({ length: copies }, (_, copy) => (
             // Repeats stay clickable but out of the tab order and accessibility tree.
             <ul key={copy} className="flex shrink-0 gap-1.5" aria-hidden={copy > 0 || undefined}>
-              {schools.map((school) => (
+              {schools.map((school, index) => (
                 <RibbonBlock
                   key={school.slug}
                   school={school}
+                  order={copy * schools.length + index}
                   repeat={copy > 0}
                   className="w-[16.5rem] sm:w-[18.75rem]"
                 />
@@ -124,20 +145,24 @@ export function SchoolRibbon({ schools, id }: { schools: RibbonSchool[]; id?: st
 
 function RibbonBlock({
   school,
+  order,
   repeat = false,
   className,
 }: {
   school: RibbonSchool;
+  order: number;
   repeat?: boolean;
   className?: string;
 }) {
+  // Only the first screenful staggers in; later blocks rise with the last of them.
+  const style = { ...schoolThemeStyle(school.theme), '--i': Math.min(order, 8) } as CSSProperties;
   return (
-    <li style={schoolThemeStyle(school.theme)} className="on-school relative">
+    <li style={style} className="on-school relative">
       <Link
         href={`/${school.slug}`}
         tabIndex={repeat ? -1 : undefined}
         className={cn(
-          'group flex h-40 flex-col bg-school px-5 pt-5 text-on-school no-underline transition-colors duration-300 hover:bg-school-deep focus-visible:-outline-offset-4 sm:h-48',
+          'landing-block-in group flex h-40 flex-col bg-school px-5 pt-5 text-on-school no-underline transition-colors duration-300 hover:bg-school-deep focus-visible:-outline-offset-4 sm:h-48',
           className,
         )}
       >

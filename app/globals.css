@@ -230,3 +230,308 @@
     animation-duration: 0s !important;
   }
 }
+
+/* Signed-out landing: school lights, hollow headline, entrances, and scroll reveals (docs/site-pages.md). */
+@layer components {
+  .landing-lights {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom, transparent, #000 7rem);
+  }
+  .landing-glow {
+    position: absolute;
+    border-radius: 9999px;
+    mix-blend-mode: screen;
+    opacity: 0.62;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side,
+      var(--glow) 0%,
+      color-mix(in srgb, var(--glow) 50%, transparent) 30%,
+      color-mix(in srgb, var(--glow) 14%, transparent) 62%,
+      transparent 100%
+    );
+    transition: background 0.6s;
+  }
+  .landing-lights .landing-glow:nth-child(1) {
+    width: min(52rem, 130vw);
+    aspect-ratio: 1;
+    right: -16rem;
+    top: -18rem;
+    animation: landing-drift-a 26s ease-in-out infinite;
+  }
+  .landing-lights .landing-glow:nth-child(2) {
+    width: min(30rem, 90vw);
+    aspect-ratio: 1;
+    left: 24%;
+    top: 8%;
+    animation: landing-drift-b 31s ease-in-out infinite;
+  }
+  .landing-lights .landing-glow:nth-child(3) {
+    width: min(44rem, 120vw);
+    aspect-ratio: 1;
+    left: -18rem;
+    top: 42%;
+    animation: landing-drift-c 23s ease-in-out infinite;
+  }
+  .landing-lights .landing-glow:nth-child(4) {
+    width: min(30rem, 90vw);
+    aspect-ratio: 1;
+    right: 8%;
+    top: 52%;
+    animation: landing-drift-b 29s ease-in-out -9s infinite;
+  }
+  .landing-glow-closing {
+    width: 40rem;
+    aspect-ratio: 1;
+    left: -8rem;
+    top: -10rem;
+    z-index: -1;
+    opacity: 0.38;
+    animation: landing-drift-a 28s ease-in-out infinite;
+  }
+  [data-paused] .landing-glow {
+    animation-play-state: paused;
+  }
+  .landing-grain {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E");
+  }
+
+  /* Headline lines rise out of their own mask; the hollow line lets the lights show through. */
+  .landing-line {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.06em;
+    margin-bottom: -0.06em;
+  }
+  .landing-line > span {
+    display: block;
+  }
+  .landing-hollow {
+    color: transparent;
+    -webkit-text-stroke: clamp(1.5px, 0.16vw, 2.5px) #fff;
+  }
+
+  .landing-chip {
+    position: relative;
+    transition:
+      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.2s;
+  }
+  .landing-chip:hover {
+    transform: translateY(-1px);
+  }
+  .landing-chip[aria-pressed='true'] {
+    box-shadow:
+      0 0 0 2px var(--school-tint),
+      0 0 0 4px var(--ink);
+  }
+  .landing-chip[aria-pressed='true']::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 5px;
+    height: 2px;
+    background: var(--chip-mark);
+  }
+
+  .landing-bar-host,
+  .landing-bar-guest {
+    transition: background-color 0.45s;
+  }
+  .landing-bar-host {
+    background-color: var(--school);
+    transform-origin: left;
+  }
+  /* Hatched so the two stays differ by pattern, not color alone. */
+  .landing-bar-guest {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--school) 0 6px,
+      color-mix(in srgb, var(--school) 30%, transparent) 6px 12px
+    );
+    transform-origin: right;
+  }
+
+  .landing-step {
+    position: relative;
+    padding-top: 20px;
+  }
+  .landing-step::before,
+  .landing-step::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+  }
+  .landing-step::before {
+    height: 2px;
+    background: var(--line-2);
+  }
+  .landing-step::after {
+    height: 4px;
+    margin-top: -1px;
+    background: var(--school);
+    transform-origin: left;
+    transition: background-color 0.45s;
+  }
+  .landing-step-numeral {
+    color: var(--school);
+    -webkit-text-stroke: 2px var(--school);
+    transition:
+      color 0.45s,
+      -webkit-text-stroke-color 0.45s;
+  }
+
+  .landing-guard > span {
+    transform-origin: left;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-line > span {
+    animation: landing-rise 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .landing-line + .landing-line > span {
+    animation-delay: 0.12s;
+  }
+  .landing-enter {
+    animation: landing-fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+  }
+  .landing-enter-late {
+    animation: landing-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+  }
+  .landing-lights {
+    animation: landing-lights-up 2.4s ease-out both;
+  }
+  .landing-block-in {
+    animation: landing-block-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(0.75s + var(--i, 0) * 70ms);
+  }
+
+  [data-reveal] .landing-bar-host,
+  [data-reveal] .landing-bar-guest {
+    transition:
+      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 0.45s;
+  }
+  [data-reveal] .landing-bar-guest {
+    transition-delay: 0.35s, 0s;
+  }
+  [data-reveal] .landing-matched {
+    transition:
+      opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1s,
+      transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1s,
+      background-color 0.45s,
+      color 0.45s;
+  }
+  [data-reveal='armed'] .landing-bar-host,
+  [data-reveal='armed'] .landing-bar-guest,
+  [data-reveal='reset'] .landing-bar-host,
+  [data-reveal='reset'] .landing-bar-guest {
+    transform: scaleX(0);
+  }
+  [data-reveal='armed'] .landing-matched,
+  [data-reveal='reset'] .landing-matched {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  [data-reveal='reset'] .landing-bar-host,
+  [data-reveal='reset'] .landing-bar-guest,
+  [data-reveal='reset'] .landing-matched {
+    transition: none;
+  }
+
+  [data-reveal] .landing-step::after {
+    transition:
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 0.35s),
+      background-color 0.45s;
+  }
+  [data-reveal] .landing-step-numeral {
+    transition:
+      color 0.5s ease calc(var(--i) * 0.35s + 0.35s),
+      -webkit-text-stroke-color 0.5s ease calc(var(--i) * 0.35s + 0.35s);
+  }
+  [data-reveal='armed'] .landing-step::after {
+    transform: scaleX(0);
+  }
+  [data-reveal='armed'] .landing-step-numeral {
+    color: transparent;
+    -webkit-text-stroke-color: var(--line-2);
+  }
+
+  [data-reveal] .landing-promise {
+    transition:
+      opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 90ms),
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 90ms);
+  }
+  [data-reveal='armed'] .landing-promise {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  [data-reveal] .landing-guard > span {
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 90ms);
+  }
+  [data-reveal='armed'] .landing-guard > span {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes landing-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-7rem, 4rem) scale(1.08);
+  }
+}
+@keyframes landing-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6rem, -3rem) scale(0.94);
+  }
+}
+@keyframes landing-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(5rem, -5rem) scale(1.06);
+  }
+}
+@keyframes landing-rise {
+  from {
+    transform: translateY(105%);
+  }
+}
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes landing-lights-up {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes landing-block-in {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+}
