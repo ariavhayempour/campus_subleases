@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  AMENITIES,
   AMENITY_LABELS,
+  FILTERABLE_AMENITIES,
   GENDER_PREFERENCE_LABELS,
   LISTING_TYPE_LABELS,
   LISTING_TYPES,
@@ -328,7 +328,7 @@ export function BrowseFilters({ schoolSlug, filters }: BrowseFiltersProps) {
               Amenities
             </legend>
             <div className="clear-left grid gap-2.5 text-sm text-ink sm:grid-cols-3 lg:grid-cols-5">
-              {AMENITIES.map((amenity) => (
+              {FILTERABLE_AMENITIES.map((amenity) => (
                 <label key={amenity} className="flex items-center gap-2">
                   <input
                     type="checkbox"

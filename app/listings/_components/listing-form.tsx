@@ -10,20 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatDistanceKm } from '@/lib/format';
 import { distanceKm } from '@/lib/geo';
-import {
-  AMENITIES,
-  AMENITY_LABELS,
-  GENDER_PREFERENCE_LABELS,
-  GENDER_PREFERENCES,
-  LISTING_TYPE_LABELS,
-  LISTING_TYPES,
-} from '@/lib/listing-options';
-import { isSharedSpace } from '@/lib/listing-rules';
 import { cn } from '@/lib/utils';
 import { listingInputSchema, type ListingData, type ListingInput } from '@/lib/validation/listing';
 import type { SchoolOption } from '@/server/services/listing-reads';
 import { AddressField, type PickedAddress } from './address-field';
 import { FieldError } from './field-error';
+import { FIXED_FIELD_HINT, hintClass, selectClass } from './form-styles';
+import { GuidedDetails } from './guided-details';
 import { PhotoUploader, type InitialPhoto } from './photo-uploader';
 
 type ListingFormProps = {
@@ -36,6 +29,8 @@ type ListingFormProps = {
   submitAction: (values: ListingInput) => Promise<ActionResult<void>>;
   // School and type are fixed once a listing exists.
   lockSchoolAndType?: boolean;
+  // Non-admins post only to their account's school, so the field is read-only.
+  lockSchool?: boolean;
 };
 
 // Fields with a visible error slot; errors on any other field go to the form-level message.
@@ -56,17 +51,15 @@ const RENDERED_FIELDS = new Set([
   'bathrooms',
   'roommatesCount',
   'privateBathroom',
+  'type',
+  'roomType',
+  'roomFeatures',
+  'genderPreference',
+  'amenities',
   'photos',
 ]);
-const selectClass =
-  'h-10 w-full rounded-md border border-line-2 bg-background px-3 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink-3 focus-visible:border-school focus-visible:ring-3 focus-visible:ring-school/20 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-2 aria-invalid:border-bad md:text-sm';
-const FIXED_FIELD_HINT = 'To change this, delete the listing and post a new one.';
 const textareaClass =
   'min-h-40 w-full rounded-md border border-line-2 bg-background px-3 py-2 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink-3 focus-visible:border-school focus-visible:ring-3 focus-visible:ring-school/20 aria-invalid:border-bad md:text-sm';
-const hintClass = 'text-sm text-ink-2';
-const checkClass = 'size-4 accent-[var(--school)]';
-const chipClass =
-  'flex cursor-pointer items-center gap-2.5 rounded-md border border-line-2 px-3 py-2.5 text-sm font-medium text-ink transition-colors hover:border-ink-3 has-[:checked]:border-school has-[:checked]:bg-school-tint';
 
 const STEPS = [
   { id: 'step-school', label: 'School' },
@@ -123,11 +116,16 @@ export function ListingForm({
   submitNote,
   submitAction,
   lockSchoolAndType = false,
+  lockSchool = false,
 }: ListingFormProps) {
   const [uploading, setUploading] = useState(false);
   const activeStep = useActiveStep();
   // Address text last set by a suggestion; typing anything else invalidates the stored location.
   const pickedAddress = useRef(defaultValues.address ?? '');
+  const form = useForm<ListingInput, unknown, ListingData>({
+    resolver: zodResolver(listingInputSchema),
+    defaultValues,
+  });
   const {
     control,
     register,
@@ -135,20 +133,13 @@ export function ListingForm({
     setValue,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<ListingInput, unknown, ListingData>({
-    resolver: zodResolver(listingInputSchema),
-    defaultValues,
-  });
-  const [type, roommatesCount, schoolId, location] = useWatch({
-    control,
-    name: ['type', 'roommatesCount', 'schoolId', 'location'],
-  });
+  } = form;
+  const [schoolId, location] = useWatch({ control, name: ['schoolId', 'location'] });
 
   // Links a field's error text to its input for assistive tech.
   const aria = (name: keyof ListingInput) =>
     errors[name] ? { 'aria-invalid': true, 'aria-describedby': `${name}-error` } : {};
 
-  const shared = isSharedSpace(type, Number.isFinite(roommatesCount) ? roommatesCount : 0);
   const school = schools.find((candidate) => candidate.id === schoolId);
   const kmFromCampus = school && location ? distanceKm(location, school.campusLocation) : 0;
   const farFromCampus = school !== undefined && kmFromCampus > school.warnRadiusKm;
@@ -216,7 +207,7 @@ export function ListingForm({
         <Step index={0}>
           <div className="space-y-2">
             <Label htmlFor="schoolId">Which school is this near?</Label>
-            {lockSchoolAndType ? (
+            {lockSchoolAndType || lockSchool ? (
               <>
                 <select
                   id="schoolId"
@@ -233,7 +224,7 @@ export function ListingForm({
                 </select>
                 <input type="hidden" {...register('schoolId')} />
                 <p id="schoolId-hint" className={hintClass}>
-                  {FIXED_FIELD_HINT}
+                  {lockSchoolAndType ? FIXED_FIELD_HINT : "Listings go to your account's school."}
                 </p>
               </>
             ) : (
@@ -310,39 +301,8 @@ export function ListingForm({
         </Step>
 
         <Step index={2}>
+          <GuidedDetails form={form} lockType={lockSchoolAndType} showAll={lockSchoolAndType} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              {lockSchoolAndType ? (
-                <>
-                  <select
-                    id="type"
-                    className={selectClass}
-                    disabled
-                    value={type}
-                    aria-describedby="type-hint"
-                  >
-                    {LISTING_TYPES.map((value) => (
-                      <option key={value} value={value}>
-                        {LISTING_TYPE_LABELS[value]}
-                      </option>
-                    ))}
-                  </select>
-                  <input type="hidden" {...register('type')} />
-                  <p id="type-hint" className={hintClass}>
-                    {FIXED_FIELD_HINT}
-                  </p>
-                </>
-              ) : (
-                <select id="type" className={selectClass} {...register('type')}>
-                  {LISTING_TYPES.map((value) => (
-                    <option key={value} value={value}>
-                      {LISTING_TYPE_LABELS[value]}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
             <div className="space-y-2">
               <Label htmlFor="rentDollars">Monthly rent ($)</Label>
               <Input
@@ -393,117 +353,6 @@ export function ListingForm({
               <FieldError id="availableTo-error" message={errors.availableTo?.message} />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="bedrooms">Bedrooms (0 = studio)</Label>
-              <Input
-                id="bedrooms"
-                type="number"
-                min={0}
-                {...aria('bedrooms')}
-                {...register('bedrooms', { valueAsNumber: true })}
-              />
-              <FieldError id="bedrooms-error" message={errors.bedrooms?.message} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bathrooms">Bathrooms</Label>
-              <Input
-                id="bathrooms"
-                type="number"
-                min={0.5}
-                step={0.5}
-                {...aria('bathrooms')}
-                {...register('bathrooms', { valueAsNumber: true })}
-              />
-              <FieldError id="bathrooms-error" message={errors.bathrooms?.message} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roommatesCount">Roommates staying</Label>
-              <Input
-                id="roommatesCount"
-                type="number"
-                min={0}
-                {...aria('roommatesCount')}
-                {...register('roommatesCount', { valueAsNumber: true })}
-              />
-              <FieldError id="roommatesCount-error" message={errors.roommatesCount?.message} />
-            </div>
-          </div>
-          {type === 'room' && (
-            <div className="space-y-2">
-              <Label htmlFor="privateBathroom">Private bathroom?</Label>
-              <Controller
-                control={control}
-                name="privateBathroom"
-                render={({ field }) => (
-                  <select
-                    id="privateBathroom"
-                    className={selectClass}
-                    value={
-                      field.value === null || field.value === undefined
-                        ? ''
-                        : field.value
-                          ? 'yes'
-                          : 'no'
-                    }
-                    onChange={(event) =>
-                      field.onChange(
-                        event.target.value === '' ? null : event.target.value === 'yes',
-                      )
-                    }
-                    onBlur={field.onBlur}
-                    {...aria('privateBathroom')}
-                  >
-                    <option value="">Choose</option>
-                    <option value="yes">Yes, private</option>
-                    <option value="no">No, shared</option>
-                  </select>
-                )}
-              />
-              <FieldError id="privateBathroom-error" message={errors.privateBathroom?.message} />
-            </div>
-          )}
-          {shared ? (
-            <div className="space-y-2">
-              <Label htmlFor="genderPreference">Roommate gender preference</Label>
-              <select
-                id="genderPreference"
-                className={selectClass}
-                {...register('genderPreference')}
-              >
-                {GENDER_PREFERENCES.map((value) => (
-                  <option key={value} value={value}>
-                    {GENDER_PREFERENCE_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <p className={hintClass}>
-              A gender preference can only be set for shared spaces (a room, or a place with
-              roommates staying).
-            </p>
-          )}
-          <label className={cn(chipClass, 'w-fit')}>
-            <input type="checkbox" className={checkClass} {...register('furnished')} />
-            Furnished
-          </label>
-          <fieldset className="space-y-2">
-            <legend className="text-[13px] font-semibold text-ink">Amenities</legend>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {AMENITIES.map((amenity) => (
-                <label key={amenity} className={chipClass}>
-                  <input
-                    type="checkbox"
-                    value={amenity}
-                    className={checkClass}
-                    {...register('amenities')}
-                  />
-                  {AMENITY_LABELS[amenity]}
-                </label>
-              ))}
-            </div>
-          </fieldset>
         </Step>
 
         <Step index={3}>

@@ -1,7 +1,7 @@
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '@/server/db/client';
-import { blocks, conversations } from '@/server/db/schema';
+import { blocks, conversations, listings } from '@/server/db/schema';
 import { ANONYMOUS } from '@/server/services/actor';
 import { NotFound } from '@/server/services/errors';
 import {
@@ -186,6 +186,29 @@ describe('owner views', () => {
       );
     }));
 
+  it('reads a legacy room listing as an apartment and drops amenities outside the set', () =>
+    withRollback(async () => {
+      const { owner, listing } = await hostWithListing();
+      await insertPhoto(listing.id, 0);
+      await db()
+        .update(listings)
+        .set({ type: 'room', amenities: ['gym', 'garage'], roomFeatures: ['desk', 'hot_tub'] })
+        .where(eq(listings.id, listing.id));
+      const edit = await getListingForEdit(actorFor(owner.id), listing.id);
+      expect(edit.values).toMatchObject({
+        type: 'apartment',
+        amenities: ['gym'],
+        roomType: 'single',
+        roomFeatures: ['desk'],
+      });
+      const detail = await getListingDetail(actorFor(owner.id), listing.id);
+      expect(detail).toMatchObject({
+        type: 'apartment',
+        roomType: 'single',
+        roomFeatures: ['desk'],
+      });
+    }));
+
   it('loads edit data only for the owner', () =>
     withRollback(async () => {
       const { owner, listing } = await hostWithListing();
@@ -211,7 +234,19 @@ describe('owner views', () => {
         atCap: false,
       });
       await insertListing(owner.id, school.id);
-      await insertListing(owner.id, school.id);
       expect((await getListingFormContext(actorFor(owner.id))).atCap).toBe(true);
+    }));
+
+  it('exempts admins from the cap and offers students only their home school', () =>
+    withRollback(async () => {
+      const home = await createSchool();
+      const other = await createSchool();
+      const user = await createUser({ homeSchoolId: home.id });
+      await insertListing(user.id, home.id);
+      const admin = await getListingFormContext(actorFor(user.id, true));
+      expect(admin.atCap).toBe(false);
+      expect(admin.schools.map((s) => s.id)).toEqual(expect.arrayContaining([home.id, other.id]));
+      const student = await getListingFormContext(actorFor(user.id));
+      expect(student.schools.map((s) => s.id)).toEqual([home.id]);
     }));
 });

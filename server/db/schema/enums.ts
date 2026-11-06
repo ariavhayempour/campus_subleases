@@ -2,7 +2,9 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 
 export const userStatus = pgEnum('user_status', ['active', 'banned']);
 
+// 'room' is legacy: kept in the database enum until a contract migration; the app reads it as apartment.
 export const listingType = pgEnum('listing_type', ['apartment', 'house', 'room']);
+export const roomType = pgEnum('room_type', ['single', 'shared']);
 export const genderPreference = pgEnum('gender_preference', [
   'any',
   'women',

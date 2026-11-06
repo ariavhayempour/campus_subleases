@@ -1,8 +1,15 @@
-import type { GenderPreference, ListingStatus, ListingType, ReviewStatus } from './listing-options';
+import {
+  MAX_ACTIVE_LISTINGS,
+  type GenderPreference,
+  type ListingStatus,
+  type ReviewStatus,
+} from './listing-options';
 
-export function isSharedSpace(type: ListingType, roommatesCount: number): boolean {
-  return type === 'room' || roommatesCount > 0;
-}
+// Admins post without a cap; everyone else gets MAX_ACTIVE_LISTINGS live listings.
+export const listingCap = (isAdmin: boolean): number =>
+  isAdmin ? Number.POSITIVE_INFINITY : MAX_ACTIVE_LISTINGS;
+
+export const hasRoommates = (count: number): boolean => count > 0;
 
 export type ReviewedFields = {
   title: string;

@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
+import { toListingType } from '@/lib/listing-options';
 import { listingBadges } from '@/lib/listing-rules';
 import { REVIEW_STATE_CHANGED, STALE_REVIEW } from '@/lib/moderation-options';
 import type { ListingInput } from '@/lib/validation/listing';
@@ -234,7 +235,7 @@ describe('admin listing services', () => {
       const { version } = await getAdminListing(adminActor, listing.id);
       const input: ListingInput = {
         schoolId: listing.schoolId,
-        type: listing.type,
+        type: toListingType(listing.type),
         title: 'Edited title',
         description: listing.description,
         rentDollars: listing.rentCents / 100,
@@ -245,6 +246,8 @@ describe('admin listing services', () => {
         roommatesCount: listing.roommatesCount,
         privateBathroom: listing.privateBathroom,
         genderPreference: listing.genderPreference,
+        roomType: listing.roomType,
+        roomFeatures: [],
         address: listing.address,
         unit: '',
         city: listing.city,

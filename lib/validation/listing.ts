@@ -1,13 +1,17 @@
 import { z } from 'zod';
 import {
   AMENITIES,
+  amenitiesFor,
   GENDER_PREFERENCES,
   LISTING_STATUSES,
   LISTING_TYPES,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS,
   PHOTO_CONTENT_TYPES,
+  ROOM_FEATURES,
+  ROOM_TYPES,
 } from '@/lib/listing-options';
+import { hasRoommates } from '@/lib/listing-rules';
 
 export const UPLOAD_PATH_PATTERN = /^listings\/[A-Za-z0-9_]+\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
@@ -38,6 +42,12 @@ const wholeNumber = (missing: string, min: number, max: number, minMessage: stri
     .int('Use a whole number')
     .min(min, minMessage)
     .max(max, `Use at most ${max}`);
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Refinements skip once a field fails unless told otherwise; the input still has to be an object.
+const isObjectInput = (payload: { value?: unknown }): boolean =>
+  typeof payload.value === 'object' && payload.value !== null;
 
 export const listingInputSchema = z
   .object({
@@ -73,7 +83,9 @@ export const listingInputSchema = z
       'Use 0 if nobody else lives there',
     ),
     privateBathroom: z.boolean().nullable(),
-    genderPreference: z.enum(GENDER_PREFERENCES),
+    genderPreference: z.enum(GENDER_PREFERENCES, { error: 'Choose a preference' }),
+    roomType: z.enum(ROOM_TYPES, { error: 'Choose single or shared' }),
+    roomFeatures: z.array(z.enum(ROOM_FEATURES)).max(ROOM_FEATURES.length),
     address: z.string().trim().min(1, 'Enter the street address').max(200),
     unit: z.string().trim().max(20, 'Use at most 20 characters'),
     city: z.string().trim().min(1, ADDRESS_MESSAGE).max(100),
@@ -90,22 +102,39 @@ export const listingInputSchema = z
       .min(1, 'Add at least one photo')
       .max(MAX_PHOTOS, `Use at most ${MAX_PHOTOS} photos`),
   })
-  .superRefine((value, ctx) => {
-    if (value.availableTo <= value.availableFrom) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['availableTo'],
-        message: 'End date must be after the start date',
-      });
-    }
-    if (value.type === 'room' && value.privateBathroom === null) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['privateBathroom'],
-        message: 'Say whether the bathroom is private',
-      });
-    }
-  });
+  // Cross-field rules run even when another field is invalid, so errors show on one submit.
+  .refine(
+    (value) =>
+      !(ISO_DATE.test(value.availableFrom) && ISO_DATE.test(value.availableTo)) ||
+      value.availableTo > value.availableFrom,
+    { path: ['availableTo'], error: 'End date must be after the start date', when: isObjectInput },
+  )
+  .refine(
+    (value) => {
+      if (!Array.isArray(value.amenities)) return true;
+      if (value.type !== 'apartment' && value.type !== 'house') return true;
+      const allowed: readonly string[] = amenitiesFor(value.type);
+      return value.amenities.every((amenity) => allowed.includes(amenity));
+    },
+    {
+      path: ['amenities'],
+      error: "Some amenities don't apply to this property type",
+      when: isObjectInput,
+    },
+  )
+  .refine(
+    (value) =>
+      !(
+        typeof value.roommatesCount === 'number' &&
+        hasRoommates(value.roommatesCount) &&
+        value.privateBathroom === null
+      ),
+    {
+      path: ['privateBathroom'],
+      error: 'Say whether the bathroom is private',
+      when: isObjectInput,
+    },
+  );
 
 export type ListingInput = z.input<typeof listingInputSchema>;
 export type ListingData = z.output<typeof listingInputSchema>;

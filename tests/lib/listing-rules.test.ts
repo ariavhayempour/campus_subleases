@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  isSharedSpace,
+  hasRoommates,
   listingBadges,
   nextReviewStatus,
   reviewedFieldsChanged,
@@ -21,11 +21,10 @@ const base: ReviewedFields = {
   photoKeys: ['a', 'b'],
 };
 
-describe('isSharedSpace', () => {
-  it('is true for rooms or places with roommates', () => {
-    expect(isSharedSpace('room', 0)).toBe(true);
-    expect(isSharedSpace('apartment', 1)).toBe(true);
-    expect(isSharedSpace('house', 0)).toBe(false);
+describe('hasRoommates', () => {
+  it('is true only for one or more roommates', () => {
+    expect(hasRoommates(0)).toBe(false);
+    expect(hasRoommates(1)).toBe(true);
   });
 });
 

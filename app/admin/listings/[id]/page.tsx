@@ -11,6 +11,9 @@ import {
   AMENITY_LABELS,
   GENDER_PREFERENCE_LABELS,
   LISTING_TYPE_LABELS,
+  ROOM_FEATURE_LABELS,
+  ROOM_TYPE_LABELS,
+  roommatesLabel,
 } from '@/lib/listing-options';
 import { listingBadges } from '@/lib/listing-rules';
 import {
@@ -51,7 +54,8 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
     LISTING_TYPE_LABELS[listing.type],
     listing.bedrooms === 0 ? 'Studio' : `${listing.bedrooms} bed`,
     `${listing.bathrooms} bath`,
-    `${listing.roommatesCount} roommate${listing.roommatesCount === 1 ? '' : 's'}`,
+    ROOM_TYPE_LABELS[listing.roomType],
+    roommatesLabel(listing.roommatesCount),
     listing.furnished ? 'Furnished' : 'Unfurnished',
     ...(listing.privateBathroom === null
       ? []
@@ -122,6 +126,12 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
           <p className="max-w-[70ch] text-[15px] leading-relaxed whitespace-pre-line text-ink">
             {listing.description}
           </p>
+          {listing.roomFeatures.length > 0 && (
+            <p className="text-sm text-ink-2">
+              <span className="font-semibold text-ink">Room:</span>{' '}
+              {listing.roomFeatures.map((feature) => ROOM_FEATURE_LABELS[feature]).join(', ')}
+            </p>
+          )}
           {listing.amenities.length > 0 && (
             <p className="text-sm text-ink-2">
               <span className="font-semibold text-ink">Amenities:</span>{' '}

@@ -6,6 +6,7 @@ import { ListingBadge } from '@/app/_components/listing-badge';
 import { requireOnboardedUser } from '@/app/_lib/guards';
 import { formatDateRange } from '@/lib/format';
 import { MAX_ACTIVE_LISTINGS } from '@/lib/listing-options';
+import { listingCap } from '@/lib/listing-rules';
 import { listingBadges } from '@/lib/listing-rules';
 import { cn } from '@/lib/utils';
 import { listMyListings, type MyListing } from '@/server/services/listing-reads';
@@ -38,18 +39,26 @@ export default async function MyListingsPage({ searchParams }: MyListingsPagePro
   const actor = await requireOnboardedUser();
   const [{ notice }, mine] = await Promise.all([searchParams, listMyListings(actor)]);
   const message = notice ? NOTICES[notice] : undefined;
-  const slotted = mine.filter(usesSlot).slice(0, MAX_ACTIVE_LISTINGS);
+  const cap = listingCap(actor.isAdmin);
+  const slotted = mine.filter(usesSlot).slice(0, cap);
   const others = mine.filter((listing) => !slotted.includes(listing));
-  const open = MAX_ACTIVE_LISTINGS - slotted.length;
+  // Admins have no cap, so one "post" tile always shows.
+  const open = actor.isAdmin ? 1 : Math.max(cap - slotted.length, 0);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <h1 className="varsity text-[clamp(2.75rem,6vw,4rem)] font-black text-ink">My listings</h1>
       <p className="mt-3 text-[16px] text-ink-2">
-        You can have up to {MAX_ACTIVE_LISTINGS} active listings.{' '}
-        <span className="font-semibold text-ink">
-          {open === 0 ? 'Both slots are in use.' : `${open} of ${MAX_ACTIVE_LISTINGS} open.`}
-        </span>
+        {actor.isAdmin ? (
+          <span className="font-semibold text-ink">Admins have no listing limit.</span>
+        ) : (
+          <>
+            You can have {MAX_ACTIVE_LISTINGS} active {MAX_ACTIVE_LISTINGS === 1 ? 'listing' : 'listings'}.{' '}
+            <span className="font-semibold text-ink">
+              {open === 0 ? 'Your slot is in use.' : 'Your slot is open.'}
+            </span>
+          </>
+        )}
       </p>
       {message && (
         <p role="status" className="mt-6 rounded-md bg-ok-bg px-4 py-3 text-sm font-medium text-ok">

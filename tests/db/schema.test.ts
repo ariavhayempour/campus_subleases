@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db, rootDb } from '@/server/db/client';
-import { blocks, listings, messages, conversations, reports } from '@/server/db/schema';
+import { blocks, listings, messages, conversations, reports, roomType } from '@/server/db/schema';
 import { catchDbError, withRollback } from '../helpers/db';
 import {
   createSchool,
@@ -44,22 +44,17 @@ describe('schema', () => {
       expect(matches).toHaveLength(1);
     }));
 
-  it('requires private_bathroom for rooms and forbids it otherwise', () =>
+  it('defaults the room type to single and the room features to empty', () =>
     withRollback(async () => {
       const owner = await createUser();
       const school = await createSchool();
-      const roomWithout = await catchDbError(() =>
-        db()
-          .insert(listings)
-          .values(listingValues(owner.id, school.id, { type: 'room' })),
-      );
-      expect(roomWithout).toContain('listings_private_bathroom_room_only');
-      const apartmentWith = await catchDbError(() =>
-        db()
-          .insert(listings)
-          .values(listingValues(owner.id, school.id, { privateBathroom: true })),
-      );
-      expect(apartmentWith).toContain('listings_private_bathroom_room_only');
+      const [row] = await db()
+        .insert(listings)
+        .values(listingValues(owner.id, school.id))
+        .returning();
+      expect(row.roomType).toBe('single');
+      expect(row.roomFeatures).toEqual([]);
+      expect(roomType.enumValues).toEqual(['single', 'shared']);
     }));
 
   it('rejects availability ranges that end before they start', () =>

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AMENITIES, GENDER_PREFERENCES, LISTING_TYPES } from '@/lib/listing-options';
+import { FILTERABLE_AMENITIES, GENDER_PREFERENCES, LISTING_TYPES } from '@/lib/listing-options';
 import { MAX_BEDROOM_OPTION, SORTS, type Sort } from '@/lib/search-options';
 
 export type Bounds = { west: number; south: number; east: number; north: number };
@@ -28,7 +28,7 @@ const fields = {
   privateBathroom: z.literal(true),
   maxRoommates: z.number().int().min(0).max(10),
   gender: z.enum(GENDER_PREFERENCES).exclude(['any']),
-  amenities: z.array(z.enum(AMENITIES)).min(1).max(AMENITIES.length),
+  amenities: z.array(z.enum(FILTERABLE_AMENITIES)).min(1).max(FILTERABLE_AMENITIES.length),
   maxKm: z.number().positive().max(100),
   bounds: boundsSchema,
   sort: z.enum(SORTS),
@@ -97,7 +97,7 @@ function parseBounds(value: string | undefined): Bounds | undefined {
 // URLs are hand-editable and shared, so bad values are dropped rather than reported.
 export function parseSearchParams(raw: RawSearchParams): SearchFilters {
   const amenities = [...new Set(listOf(raw.amenity))].flatMap((value) => {
-    const amenity = pick(z.enum(AMENITIES), value);
+    const amenity = pick(z.enum(FILTERABLE_AMENITIES), value);
     return amenity ? [amenity] : [];
   });
   const filters: SearchFilters = {

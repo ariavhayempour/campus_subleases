@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { toListingType } from '@/lib/listing-options';
 import type { ListingInput, PhotoRef } from '@/lib/validation/listing';
 import { db } from '@/server/db/client';
 import { conversations, favorites, listingPhotos, listings } from '@/server/db/schema';
@@ -39,7 +40,7 @@ function editInput(
 ): ListingInput {
   return {
     schoolId: row.schoolId,
-    type: row.type,
+    type: toListingType(row.type),
     title: row.title,
     description: row.description,
     rentDollars: row.rentCents / 100,
@@ -50,6 +51,8 @@ function editInput(
     roommatesCount: row.roommatesCount,
     privateBathroom: row.privateBathroom,
     genderPreference: row.genderPreference,
+    roomType: row.roomType,
+    roomFeatures: row.roomFeatures as ListingInput['roomFeatures'],
     address: row.address,
     unit: row.unit ?? '',
     city: row.city,
@@ -113,6 +116,31 @@ describe('updateListing', () => {
         title: 'Bigger sunny studio',
         reviewStatus: 'pending',
       });
+    }));
+
+  it('lets a stray legacy room listing be edited and saves it as an apartment', () =>
+    withRollback(async () => {
+      const { owner, listing, existing } = await setup({ type: 'room', reviewStatus: 'approved' });
+      await updateListing(
+        actorFor(owner.id),
+        listing.id,
+        editInput(listing, existing, { furnished: false }),
+      );
+      const [row] = await db().select().from(listings).where(eq(listings.id, listing.id));
+      expect(row).toMatchObject({ type: 'apartment', furnished: false });
+    }));
+
+  it('keeps approval when only the room type or room features change', () =>
+    withRollback(async () => {
+      const { owner, listing, existing } = await setup({ reviewStatus: 'approved' });
+      const result = await updateListing(
+        actorFor(owner.id),
+        listing.id,
+        editInput(listing, existing, { roomType: 'shared', roomFeatures: ['desk', 'window'] }),
+      );
+      expect(result.reviewStatus).toBe('approved');
+      const [row] = await db().select().from(listings).where(eq(listings.id, listing.id));
+      expect(row).toMatchObject({ roomType: 'shared', roomFeatures: ['desk', 'window'] });
     }));
 
   it('keeps approval for dates, rooms, amenities, and photo order', () =>

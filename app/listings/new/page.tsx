@@ -19,7 +19,8 @@ export default async function NewListingPage() {
       <h1 className="varsity text-[clamp(2.75rem,6vw,4rem)] font-black text-ink">Post a listing</h1>
       {atCap ? (
         <p className="mt-6 max-w-[60ch] rounded-md bg-surface-2 p-5 text-[16px] text-ink-2">
-          You already have {MAX_ACTIVE_LISTINGS} active listings. Mark one as taken or remove it in{' '}
+          You already have {MAX_ACTIVE_LISTINGS} active{' '}
+          {MAX_ACTIVE_LISTINGS === 1 ? 'listing' : 'listings'}. Mark it as taken or remove it in{' '}
           <Link href="/me/listings" className="font-semibold text-school-link underline">
             My listings
           </Link>{' '}
@@ -37,16 +38,14 @@ export default async function NewListingPage() {
               submitLabel="Submit for review"
               submitNote="Every listing is reviewed before it appears, usually within 24 hours."
               submitAction={createListingAction}
+              lockSchool={!actor.isAdmin}
               defaultValues={{
                 schoolId: homeSchoolId ?? '',
-                type: 'apartment',
                 title: '',
                 description: '',
                 availableFrom: '',
                 availableTo: '',
-                roommatesCount: 0,
                 privateBathroom: null,
-                genderPreference: 'any',
                 address: '',
                 unit: '',
                 city: '',
@@ -54,6 +53,7 @@ export default async function NewListingPage() {
                 zip: '',
                 location: null,
                 furnished: false,
+                roomFeatures: [],
                 amenities: [],
                 photos: [],
               }}

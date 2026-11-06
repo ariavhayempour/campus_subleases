@@ -15,7 +15,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { createdAt, geographyPoint, tsvector, updatedAt } from './columns';
-import { genderPreference, listingStatus, listingType, reviewStatus } from './enums';
+import { genderPreference, listingStatus, listingType, reviewStatus, roomType } from './enums';
 import { schools } from './schools';
 import { users } from './users';
 
@@ -30,6 +30,11 @@ export const listings = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     type: listingType('type').notNull(),
+    roomType: roomType('room_type').notNull().default('single'),
+    roomFeatures: text('room_features')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     title: text('title').notNull(),
     description: text('description').notNull(),
     rentCents: integer('rent_cents').notNull(),
@@ -74,10 +79,6 @@ export const listings = pgTable(
     check('listings_dates_order', sql`${t.availableTo} > ${t.availableFrom}`),
     check('listings_bedrooms_nonnegative', sql`${t.bedrooms} >= 0`),
     check('listings_roommates_range', sql`${t.roommatesCount} between 0 and 10`),
-    check(
-      'listings_private_bathroom_room_only',
-      sql`(${t.type} = 'room') = (${t.privateBathroom} is not null)`,
-    ),
     check(
       'listings_rejection_has_note',
       sql`${t.reviewStatus} <> 'rejected' or ${t.reviewNote} is not null`,

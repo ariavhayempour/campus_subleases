@@ -1,11 +1,16 @@
 import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
 import {
+  amenitiesFor,
   isAmenity,
-  MAX_ACTIVE_LISTINGS,
+  isRoomFeature,
+  toListingType,
   type Amenity,
   type ListingStatus,
+  type ListingType,
   type ReviewStatus,
+  type RoomFeature,
 } from '@/lib/listing-options';
+import { listingCap } from '@/lib/listing-rules';
 import { isUuid, type ListingInput, type LngLat } from '@/lib/validation/listing';
 import { db } from '@/server/db/client';
 import { conversations, listingPhotos, listings, schools, users } from '@/server/db/schema';
@@ -15,6 +20,7 @@ import { isFavoritedBy } from './listing-cards';
 import { countsTowardCap, isExpired, isPublicListing } from './listing-sql';
 import { getBlockState } from './moderation';
 import { photoUrls } from './photos';
+import { isOutsideHomeSchool } from './school-lock';
 
 type ListingRow = typeof listings.$inferSelect;
 
@@ -22,9 +28,18 @@ export type ListingPhotoView = { id: string; thumbUrl: string; galleryUrl: strin
 
 export type ListingDetail = Omit<
   ListingRow,
-  'ownerId' | 'schoolId' | 'searchVector' | 'reviewedBy' | 'reviewedAt' | 'amenities'
+  | 'ownerId'
+  | 'schoolId'
+  | 'searchVector'
+  | 'reviewedBy'
+  | 'reviewedAt'
+  | 'amenities'
+  | 'type'
+  | 'roomFeatures'
 > & {
+  type: ListingType;
   amenities: Amenity[];
+  roomFeatures: RoomFeature[];
   isPublic: boolean;
   isExpired: boolean;
   school: { slug: string; name: string; campusLocation: LngLat };
@@ -33,6 +48,8 @@ export type ListingDetail = Omit<
   photos: ListingPhotoView[];
   viewer: 'owner' | 'admin' | 'visitor';
   isFavorited: boolean;
+  // Signed-in student from another school: may view, not interact.
+  crossSchool: boolean;
   conversationId: string | null; // the viewer's conversation on this listing as renter
 };
 
@@ -131,10 +148,16 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
   }
   const conversationId = viewerId ? await findRenterConversationId(listing.id, viewerId) : null;
   const showUnit = viewer !== 'visitor' || conversationId !== null;
+  const crossSchool =
+    viewer === 'visitor' &&
+    actor.kind === 'user' &&
+    (await isOutsideHomeSchool(actor, listing.schoolId));
 
   return {
     id: listing.id,
-    type: listing.type,
+    type: toListingType(listing.type),
+    roomType: listing.roomType,
+    roomFeatures: listing.roomFeatures.filter(isRoomFeature),
     title: listing.title,
     description: listing.description,
     rentCents: listing.rentCents,
@@ -167,6 +190,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
     photos: await loadPhotos(listing.id),
     viewer,
     isFavorited: row.isFavorited,
+    crossSchool,
     conversationId,
   };
 }
@@ -220,7 +244,7 @@ export async function getListingForEdit(actor: Actor, listingId: string): Promis
     photos: photos.map((photo) => ({ id: photo.id, thumbUrl: photo.thumbUrl })),
     values: {
       schoolId: listing.schoolId,
-      type: listing.type,
+      type: toListingType(listing.type),
       title: listing.title,
       description: listing.description,
       rentDollars: listing.rentCents / 100,
@@ -231,6 +255,8 @@ export async function getListingForEdit(actor: Actor, listingId: string): Promis
       roommatesCount: listing.roommatesCount,
       privateBathroom: listing.privateBathroom,
       genderPreference: listing.genderPreference,
+      roomType: listing.roomType,
+      roomFeatures: listing.roomFeatures.filter(isRoomFeature),
       address: listing.address,
       unit: listing.unit ?? '',
       city: listing.city,
@@ -238,7 +264,9 @@ export async function getListingForEdit(actor: Actor, listingId: string): Promis
       zip: listing.zip,
       location: listing.location,
       furnished: listing.furnished,
-      amenities: listing.amenities.filter(isAmenity),
+      amenities: listing.amenities
+        .filter(isAmenity)
+        .filter((amenity) => amenitiesFor(toListingType(listing.type)).includes(amenity)),
       photos: photos.map((photo) => ({ kind: 'existing', id: photo.id })),
     },
   };
@@ -267,9 +295,12 @@ export async function getListingFormContext(
       .innerJoin(schools, eq(schools.id, listings.schoolId))
       .where(and(eq(listings.ownerId, user.userId), countsTowardCap)),
   ]);
+  const homeSchoolId = me?.homeSchoolId ?? null;
   return {
-    schools: schoolRows,
-    homeSchoolId: me?.homeSchoolId ?? null,
-    atCap: counted.n >= MAX_ACTIVE_LISTINGS,
+    // Students can post only to their home school; admins pick any.
+    schools:
+      user.isAdmin || !homeSchoolId ? schoolRows : schoolRows.filter((s) => s.id === homeSchoolId),
+    homeSchoolId,
+    atCap: counted.n >= listingCap(user.isAdmin),
   };
 }
