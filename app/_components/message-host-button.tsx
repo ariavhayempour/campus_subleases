@@ -1,4 +1,4 @@
-import { SignInButton } from '@clerk/nextjs';
+import { SignUpButton } from '@clerk/nextjs';
 import { MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
@@ -12,12 +12,12 @@ type MessageHostButtonProps = {
 export function MessageHostButton({ listingId, conversationId, signedIn }: MessageHostButtonProps) {
   if (!signedIn) {
     return (
-      <SignInButton mode="redirect">
+      <SignUpButton mode="redirect">
         <button type="button" className={buttonVariants({ size: 'lg' })}>
           <MessageSquare aria-hidden="true" />
           Message host
         </button>
-      </SignInButton>
+      </SignUpButton>
     );
   }
   return (

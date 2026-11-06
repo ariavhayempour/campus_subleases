@@ -23,3 +23,24 @@ test('a new user is sent to onboarding, then to their home school', async ({ pag
   await page.goto('/');
   await expect(page).toHaveURL('/uw-madison');
 });
+
+test('onboarding returns a new user to the page they signed up from', async ({ page }) => {
+  test.skip(!testUserEmail && !process.env.CI, 'E2E Clerk test user not configured');
+  expect(testUserEmail, 'E2E_CLERK_USER_EMAIL must be set in CI').not.toBe('');
+
+  const userId = await signInTestUser(page);
+  await resetUserById(userId);
+
+  const returnPath = '/uw-madison?q=zebracorn';
+  await page.goto(`/onboarding?next=${encodeURIComponent(returnPath)}`);
+  await page
+    .getByRole('radiogroup', { name: 'Home school' })
+    .getByRole('radio', { name: /University of Wisconsin–Madison/ })
+    .check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(returnPath);
+
+  // Once onboarded, a stale onboarding link with an off-site target falls back to the home school.
+  await page.goto(`/onboarding?next=${encodeURIComponent('//evil.example')}`);
+  await expect(page).toHaveURL('/uw-madison');
+});

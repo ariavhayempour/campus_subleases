@@ -230,3 +230,21 @@ test('the admin bans and unbans a user', async ({ browser }) => {
   await expect(page.getByText('Active', { exact: true })).toBeVisible(SLOW);
   expect((await getClerkUser(throwaway.id)).banned).toBe(false);
 });
+
+test('students stay on their school while the admin switches schools', async ({ browser }) => {
+  requireUsers();
+  const host = await signIn(browser, testUserEmail);
+  const admin = await signIn(browser, adminUserEmail);
+  hostId = host.userId;
+  await prepareHost(hostId, 'uw-madison');
+
+  await host.page.goto('/umich');
+  await expect(host.page).toHaveURL(/\/uw-madison$/, SLOW);
+  await expect(host.page.getByLabel('Viewing school')).toHaveCount(0);
+
+  await admin.page.goto('/umich');
+  const switcher = admin.page.getByLabel('Viewing school');
+  await expect(switcher).toHaveValue('umich', SLOW);
+  await switcher.selectOption('ucla');
+  await expect(admin.page).toHaveURL(/\/ucla$/, SLOW);
+});

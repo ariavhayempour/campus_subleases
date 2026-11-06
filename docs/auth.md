@@ -29,6 +29,13 @@
   `moderation.md`.
 - **Onboarding:** users without a home school are redirected to `/onboarding`
   (`requireOnboardedUser()` in `app/_lib/guards.ts`; `/` also redirects).
+- **Return after sign-up:** sign-up buttons (Save, Message host) send Clerk's `redirect_url`. The
+  sign-up page turns it into `/onboarding?next=<path>` as its `forceRedirectUrl`, and onboarding
+  sends the user to `next` instead of the home school once they pick one (also when an
+  already-onboarded user opens such a link). `safeReturnPath` in `lib/return-path.ts` keeps only the
+  path, rejects protocol-relative input, and drops auth, onboarding, `/api`, and `/` targets; the
+  onboarding action re-checks it because its arguments come from the browser. A returning user
+  who switches to sign-in from the sign-up form is returned by Clerk directly.
 - **Supabase ↔ Clerk third-party auth:** Supabase Realtime accepts the Clerk session token
   directly (no Supabase Auth users). It is used only so the browser can join its own private
   channel (see `messaging.md`); nothing else in the app reads Supabase as the user. Supabase needs
