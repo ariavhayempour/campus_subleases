@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { PAGE_SIZE } from '@/lib/search-options';
 import type { SearchFilters } from '@/lib/validation/search';
@@ -374,6 +374,25 @@ describe('searchListings sorting and paging', () => {
 });
 
 describe('cards and pins', () => {
+  it('flag listings approved within the last week as new', () =>
+    withRollback(async () => {
+      const owner = await createUser();
+      const school = await createSchool();
+      const fresh = await insertListing(owner.id, school.id, live);
+      const old = await insertListing(owner.id, school.id, live);
+      const never = await insertListing(owner.id, school.id, live);
+      await db().update(listings).set({ reviewedAt: new Date() }).where(eq(listings.id, fresh.id));
+      await db()
+        .update(listings)
+        .set({ reviewedAt: new Date(Date.now() - 8 * 86_400_000) })
+        .where(eq(listings.id, old.id));
+      await db().update(listings).set({ reviewedAt: null }).where(eq(listings.id, never.id));
+
+      const { cards } = await searchListings(ANONYMOUS, { schoolId: school.id, filters: {} });
+      const isNew = Object.fromEntries(cards.map((card) => [card.id, card.isNew]));
+      expect(isNew).toEqual({ [fresh.id]: true, [old.id]: false, [never.id]: false });
+    }));
+
   it('include the cover photo and whether the viewer saved the listing', () =>
     withRollback(async () => {
       const owner = await createUser();

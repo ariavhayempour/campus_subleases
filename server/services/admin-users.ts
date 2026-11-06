@@ -12,7 +12,12 @@ import { getClerkAccount, setClerkBan } from '@/server/clerk/users';
 import { db } from '@/server/db/client';
 import { conversations, listings, messages, reports, schools, users } from '@/server/db/schema';
 import { requireAdmin, type Actor } from './actor';
-import { adminListingRowsQuery, type AdminListingRow, type UserStatus } from './admin-listings';
+import {
+  adminListingRowsQuery,
+  toAdminListingRow,
+  type AdminListingRow,
+  type UserStatus,
+} from './admin-listings';
 import { listAuditFor, writeAudit, type AdminAction, type AuditEntry } from './audit';
 import { Forbidden, NotFound, parseInput } from './errors';
 import { lockMessagingUsers } from './locks';
@@ -190,7 +195,7 @@ export async function getAdminUser(actor: Actor, userId: string): Promise<AdminU
     homeSchool:
       row.schoolSlug && row.schoolName ? { slug: row.schoolSlug, name: row.schoolName } : null,
     isAdmin,
-    listings: ownedListings,
+    listings: ownedListings.map(toAdminListingRow),
     conversations: convoRows.map((c) => {
       const isHost = c.hostId === userId;
       return {

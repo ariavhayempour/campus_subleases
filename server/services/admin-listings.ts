@@ -16,16 +16,17 @@ import {
 } from '@/lib/validation/moderation';
 import { isUuid } from '@/lib/validation/listing';
 import { db, type DbExecutor } from '@/server/db/client';
-import { listings, reports, schools, users } from '@/server/db/schema';
+import { listingPhotos, listings, reports, schools, users } from '@/server/db/schema';
 import type { userStatus } from '@/server/db/schema/enums';
 import { requireAdmin, type Actor } from './actor';
 import { listAuditFor, writeAudit, type AdminAction, type AuditEntry } from './audit';
 import { bestEffort } from './best-effort';
 import { Conflict, NotFound, parseInput } from './errors';
+import { coverJoin } from './listing-cards';
 import { getListingDetail, type ListingDetail } from './listing-reads';
 import { isExpired, listingVersion } from './listing-sql';
 import { deleteListingRow } from './listings';
-import { deleteProcessedPhotos } from './photos';
+import { deleteProcessedPhotos, photoUrls } from './photos';
 
 export type UserStatus = (typeof userStatus.enumValues)[number];
 
@@ -43,6 +44,7 @@ export type AdminListingRow = {
   autoHidden: boolean;
   farFromCampusKm: number | null;
   openReports: number;
+  coverThumbUrl: string | null;
 };
 
 export type AdminListingView = {
@@ -114,10 +116,18 @@ export function adminListingRowsQuery() {
       autoHidden: autoHiddenFlag,
       farFromCampusKm: farFromCampus,
       openReports: openReportCount,
+      coverPath: listingPhotos.storagePath,
     })
     .from(listings)
     .innerJoin(schools, eq(schools.id, listings.schoolId))
-    .innerJoin(users, eq(users.id, listings.ownerId));
+    .innerJoin(users, eq(users.id, listings.ownerId))
+    .leftJoin(listingPhotos, coverJoin);
+}
+
+type AdminListingQueryRow = Omit<AdminListingRow, 'coverThumbUrl'> & { coverPath: string | null };
+
+export function toAdminListingRow({ coverPath, ...row }: AdminListingQueryRow): AdminListingRow {
+  return { ...row, coverThumbUrl: coverPath ? photoUrls(coverPath).thumb : null };
 }
 
 export async function listAdminListings(actor: Actor, input: unknown): Promise<AdminListingRow[]> {
@@ -136,7 +146,7 @@ export async function listAdminListings(actor: Actor, input: unknown): Promise<A
         : [desc(listings.updatedAt), desc(listings.id)]),
     )
     .limit(ADMIN_LIST_LIMIT);
-  return rows;
+  return rows.map(toAdminListingRow);
 }
 
 export async function getAdminListing(actor: Actor, listingId: string): Promise<AdminListingView> {
