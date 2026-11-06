@@ -16,6 +16,7 @@ import { requireUser, type Actor } from './actor';
 import { Forbidden, NotFound, parseInput, RateLimited, ValidationError } from './errors';
 import { lockMessagingUsers } from './locks';
 import { isPublicListing, noBlockWith } from './listing-sql';
+import { assertInHomeSchool } from './school-lock';
 import { getBlockState, type BlockState } from './moderation';
 
 export type SendResult = { conversationId: string; message: MessageView };
@@ -212,13 +213,14 @@ export async function startConversation(actor: Actor, input: unknown): Promise<S
   );
 
   const [listing] = await db()
-    .select({ id: listings.id, ownerId: listings.ownerId })
+    .select({ id: listings.id, ownerId: listings.ownerId, schoolId: listings.schoolId })
     .from(listings)
     .innerJoin(schools, eq(schools.id, listings.schoolId))
     .innerJoin(users, eq(users.id, listings.ownerId))
     .where(and(eq(listings.id, listingId), isPublicListing, noBlockWith(user.userId)));
   if (!listing) throw new NotFound('Listing not found');
   if (listing.ownerId === user.userId) throw new Forbidden("You can't message yourself");
+  await assertInHomeSchool(user, listing.schoolId);
   const [self] = await db()
     .select({ status: users.status })
     .from(users)

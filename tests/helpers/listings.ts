@@ -20,6 +20,8 @@ export function listingInput(
     roommatesCount: 0,
     privateBathroom: null,
     genderPreference: 'any',
+    roomType: 'single',
+    roomFeatures: [],
     address: '123 State St',
     unit: '',
     city: 'Madison',

@@ -24,7 +24,7 @@ test('an owner sees a pending listing; once approved it is public without the un
 
     await page.goto(`/listings/${listingId}/edit`);
     await expect(page.getByLabel('Which school is this near?')).toBeDisabled();
-    await expect(page.getByLabel('Type', { exact: true })).toBeDisabled();
+    await expect(page.getByLabel('Is it an apartment or a house?')).toBeDisabled();
     await expect(
       page.getByText('To change this, delete the listing and post a new one.'),
     ).toHaveCount(2);

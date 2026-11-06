@@ -6,6 +6,7 @@ import { requireUser, type Actor } from './actor';
 import { NotFound, parseInput } from './errors';
 import { CARD_COLUMNS, coverJoin, toListingCard, type ListingCard } from './listing-cards';
 import { isPublicListing, noBlockWith } from './listing-sql';
+import { assertInHomeSchool } from './school-lock';
 
 const MAX_FAVORITES_SHOWN = 200;
 
@@ -19,12 +20,13 @@ export async function setFavorite(actor: Actor, input: unknown): Promise<void> {
     return;
   }
   const [visible] = await db()
-    .select({ id: listings.id })
+    .select({ id: listings.id, schoolId: listings.schoolId })
     .from(listings)
     .innerJoin(schools, eq(schools.id, listings.schoolId))
     .innerJoin(users, eq(users.id, listings.ownerId))
     .where(and(eq(listings.id, listingId), isPublicListing, noBlockWith(user.userId)));
   if (!visible) throw new NotFound('Listing not found');
+  await assertInHomeSchool(user, visible.schoolId);
   await db().insert(favorites).values({ userId: user.userId, listingId }).onConflictDoNothing();
 }
 

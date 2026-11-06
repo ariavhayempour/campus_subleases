@@ -40,11 +40,11 @@ test('visitors filter and sort listings, and the unit never reaches the page', a
   await expect(page.getByText('ZQ-41')).toHaveCount(0);
 });
 
-test('signed-out visitors are sent to sign in when saving', async ({ page }) => {
+test('signed-out visitors are sent to sign up when saving', async ({ page }) => {
   await seedBrowseListings([{ title: 'Zebracorn cozy studio', rentCents: 90_000 }]);
   await page.goto(SCOPE);
   await page.getByRole('button', { name: 'Save “Zebracorn cozy studio”' }).click();
-  await expect(page).toHaveURL(/\/sign-in/);
+  await expect(page).toHaveURL(/\/sign-up/);
 });
 
 test('signing in from a save returns to the filtered browse page', async ({ page }) => {
@@ -55,6 +55,9 @@ test('signing in from a save returns to the filtered browse page', async ({ page
   await setupClerkTestingToken({ page });
   await page.goto(SCOPE);
   await page.getByRole('button', { name: 'Save “Zebracorn cozy studio”' }).click();
+  await expect(page).toHaveURL(/\/sign-up/);
+  // Existing users switch to sign-in from the sign-up form; the return URL carries over.
+  await page.getByRole('link', { name: 'Sign in', exact: true }).last().click();
   await expect(page).toHaveURL(/\/sign-in/);
   await signInThroughForm(page);
   await expect(page).toHaveURL(SCOPE);

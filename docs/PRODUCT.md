@@ -32,9 +32,12 @@ escrow.
 - Desktop-first (≥1024px) and usable down to phone width, because shared links open on phones.
   Admin is desktop-only.
 - Students pick a home school once, at account creation. When signed in they land on that school's
-  browse page and see its colors; students cannot switch schools. Admins can switch schools freely.
-  (Owner decision 2026-11-05; the switching lock is a functionality change still to build.)
-- Signed-out visitors start at the school picker on `/`.
+  browse page and see its colors; students cannot switch schools (other schools' browse pages
+  redirect to their own) and can post only to it. Admins switch schools freely with the dropdown on
+  the browse page. Non-admins have one live listing at a time; admins have no limit.
+- Signed-out visitors start at the landing page on `/`, which explains the platform, names the open
+  schools, and points to sign-up. They can browse any school's pages view-only; saving, messaging,
+  and posting need an account. (Owner decision 2026-11-05.)
 
 ## Capabilities and Constraints
 
@@ -85,6 +88,5 @@ navigable; filters and map have non-pointer paths.
 
 ## Open Decisions
 
-- Home-school lock (owner decision 2026-11-05, not built yet): students cannot switch schools;
-  admins can. Open: what a signed-in student sees when they open a listing link from another school.
-- Landing page (`/`) redesign is deferred; the owner rejected both mockup versions.
+- Home-school lock is built. A student who opens another school's listing link can view it but not
+  message, save, or report it.

@@ -39,12 +39,12 @@ test.afterEach(async () => {
   }
 });
 
-test('signed-out visitors are sent to sign in when messaging a host', async ({ page }) => {
+test('signed-out visitors are sent to sign up when messaging a host', async ({ page }) => {
   await seedBrowseListings([{ title: 'Zebracorn message studio', rentCents: 90_000 }]);
   await page.goto('/uw-madison?q=zebracorn');
   await page.getByRole('link', { name: /Zebracorn message studio/ }).click();
   await page.getByRole('button', { name: 'Message host' }).click();
-  await expect(page).toHaveURL(/\/sign-in/);
+  await expect(page).toHaveURL(/\/sign-up/);
 });
 
 test('a renter messages a host, they reply live, and the host blocks the renter', async ({

@@ -48,13 +48,18 @@ function filterConditions(filters: SearchFilters): SQL[] {
         : eq(listings.bedrooms, filters.bedrooms),
     );
   }
-  if (filters.type) conditions.push(eq(listings.type, filters.type));
+  // Leftover legacy 'room' rows read as apartments until a contract migration removes the value.
+  if (filters.type) {
+    conditions.push(
+      filters.type === 'apartment'
+        ? inArray(listings.type, ['apartment', 'room'])
+        : eq(listings.type, filters.type),
+    );
+  }
   if (filters.furnished) conditions.push(eq(listings.furnished, true));
   // A whole place with nobody else living there has its own bathroom.
   if (filters.privateBathroom) {
-    conditions.push(
-      sql`(${listings.privateBathroom} or (${listings.type} <> 'room' and ${listings.roommatesCount} = 0))`,
-    );
+    conditions.push(sql`(${listings.privateBathroom} or ${listings.roommatesCount} = 0)`);
   }
   if (filters.maxRoommates !== undefined) {
     conditions.push(lte(listings.roommatesCount, filters.maxRoommates));

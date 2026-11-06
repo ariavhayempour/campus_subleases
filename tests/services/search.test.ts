@@ -179,7 +179,6 @@ describe('searchListings filters', () => {
         roommatesCount: 2,
       });
       await add('Room C', {
-        type: 'room',
         privateBathroom: true,
         rentCents: 70_000,
         bedrooms: 1,
@@ -188,7 +187,6 @@ describe('searchListings filters', () => {
       });
       await add('Big D', { rentCents: 250_000, bedrooms: 5, furnished: false, roommatesCount: 0 });
       await add('Room E', {
-        type: 'room',
         privateBathroom: false,
         rentCents: 65_000,
         bedrooms: 1,
@@ -202,7 +200,7 @@ describe('searchListings filters', () => {
       ]);
       expect(await titles(school.id, { bedrooms: 0 })).toEqual(['Studio A']);
       expect(await titles(school.id, { bedrooms: 4 })).toEqual(['Big D']);
-      expect(sorted(await titles(school.id, { type: 'room' }))).toEqual(['Room C', 'Room E']);
+      expect(await titles(school.id, { type: 'house' })).toEqual(['House B']);
       expect(await titles(school.id, { furnished: true })).toEqual(['Studio A']);
       expect(sorted(await titles(school.id, { maxRoommates: 1 }))).toEqual([
         'Big D',
@@ -216,11 +214,25 @@ describe('searchListings filters', () => {
       ]);
     }));
 
+  it('treats leftover legacy room rows as apartments in the type filter', () =>
+    withRollback(async () => {
+      const owner = await createUser();
+      const school = await createSchool();
+      await insertListing(owner.id, school.id, { ...live, title: 'Plain apartment' });
+      await insertListing(owner.id, school.id, { ...live, type: 'room', title: 'Legacy room' });
+      await insertListing(owner.id, school.id, { ...live, type: 'house', title: 'A house' });
+      expect(sorted(await titles(school.id, { type: 'apartment' }))).toEqual([
+        'Legacy room',
+        'Plain apartment',
+      ]);
+      expect(await titles(school.id, { type: 'house' })).toEqual(['A house']);
+    }));
+
   it('matches a gender preference or "any"', () =>
     withRollback(async () => {
       const owner = await createUser();
       const school = await createSchool();
-      const shared = { ...live, type: 'room', privateBathroom: false } as const;
+      const shared = { ...live, roommatesCount: 1, privateBathroom: false } as const;
       await insertListing(owner.id, school.id, { ...shared, title: 'Anyone room' });
       await insertListing(owner.id, school.id, {
         ...shared,

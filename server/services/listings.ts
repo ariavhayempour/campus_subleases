@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
-import { MAX_ACTIVE_LISTINGS, type ReviewStatus } from '@/lib/listing-options';
+import { toListingType, type ReviewStatus } from '@/lib/listing-options';
 import {
-  isSharedSpace,
+  hasRoommates,
+  listingCap,
   nextReviewStatus,
   reviewedFieldsChanged,
   type ReviewedFields,
@@ -33,11 +34,11 @@ import {
   invalidPhoto,
   processListingUploads,
 } from './photos';
+import { isOutsideHomeSchool } from './school-lock';
 
 export const LISTINGS_PER_DAY = 5;
 
 function toColumns(data: ListingData): Omit<typeof listings.$inferInsert, 'ownerId'> {
-  const shared = isSharedSpace(data.type, data.roommatesCount);
   return {
     schoolId: data.schoolId,
     type: data.type,
@@ -49,8 +50,10 @@ function toColumns(data: ListingData): Omit<typeof listings.$inferInsert, 'owner
     bedrooms: data.bedrooms,
     bathrooms: data.bathrooms,
     roommatesCount: data.roommatesCount,
-    privateBathroom: data.type === 'room' ? data.privateBathroom : null,
-    genderPreference: shared ? data.genderPreference : ('any' as const),
+    privateBathroom: hasRoommates(data.roommatesCount) ? data.privateBathroom : null,
+    genderPreference: data.genderPreference,
+    roomType: data.roomType,
+    roomFeatures: [...new Set(data.roomFeatures)],
     address: data.address,
     unit: data.unit || null,
     city: data.city,
@@ -127,27 +130,34 @@ export async function createListing(
     throw invalidPhoto('A photo upload is invalid — remove it and try again');
   }
 
+  if (await isOutsideHomeSchool(user, data.schoolId)) {
+    throw new ValidationError({ schoolId: ['You can only post to your own school'] });
+  }
   const school = await loadSchool(db(), data.schoolId);
   assertNotPast(data.availableTo, school.today);
   // Cheap pre-checks so a doomed save never pays for photo processing; both re-run under the lock.
-  if ((await countTowardCap(db(), user.userId)) >= MAX_ACTIVE_LISTINGS) {
+  if ((await countTowardCap(db(), user.userId)) >= listingCap(user.isAdmin)) {
     throw new ListingCapReached();
   }
-  if ((await countRecentListings(db(), user.userId)) >= LISTINGS_PER_DAY) throw rateLimited();
+  if (!user.isAdmin && (await countRecentListings(db(), user.userId)) >= LISTINGS_PER_DAY) {
+    throw rateLimited();
+  }
 
   const id = randomUUID();
   const basePaths = await processListingUploads(user.userId, id, uploadPaths);
   try {
     await db().transaction(async (tx) => {
       await lockOwner(tx, user.userId);
-      if ((await countRecentListings(tx, user.userId)) >= LISTINGS_PER_DAY) throw rateLimited();
+      if (!user.isAdmin && (await countRecentListings(tx, user.userId)) >= LISTINGS_PER_DAY) {
+        throw rateLimited();
+      }
       await tx.insert(listings).values({ id, ownerId: user.userId, ...toColumns(data) });
       await tx
         .insert(listingPhotos)
         .values(
           basePaths.map((storagePath, position) => ({ listingId: id, storagePath, position })),
         );
-      if ((await countTowardCap(tx, user.userId)) > MAX_ACTIVE_LISTINGS) {
+      if ((await countTowardCap(tx, user.userId)) > listingCap(user.isAdmin)) {
         throw new ListingCapReached();
       }
     });
@@ -231,7 +241,8 @@ export async function updateListing(
   const data = parseInput(listingInputSchema, input);
   const fixedFieldErrors: Record<string, string[]> = {};
   if (data.schoolId !== current.schoolId) fixedFieldErrors.schoolId = [FIXED_FIELD_MESSAGE];
-  if (data.type !== current.type) fixedFieldErrors.type = [FIXED_FIELD_MESSAGE];
+  // A stray legacy 'room' row compares as the apartment it is read as.
+  if (data.type !== toListingType(current.type)) fixedFieldErrors.type = [FIXED_FIELD_MESSAGE];
   if (Object.keys(fixedFieldErrors).length > 0) throw new ValidationError(fixedFieldErrors);
 
   const currentPhotos = await db()
@@ -271,7 +282,7 @@ export async function updateListing(
   if (
     !countsTowardCapNow(current.status, current.reviewStatus, current.availableTo, school.today) &&
     countsTowardCapNow(current.status, reviewStatus, data.availableTo, school.today) &&
-    (await countTowardCap(db(), user.userId)) >= MAX_ACTIVE_LISTINGS
+    (await countTowardCap(db(), user.userId)) >= listingCap(user.isAdmin)
   ) {
     throw new ListingCapReached();
   }
@@ -323,7 +334,7 @@ export async function updateListing(
         .values(
           orderedPaths.map((storagePath, position) => ({ listingId, storagePath, position })),
         );
-      if ((await countTowardCap(tx, user.userId)) > MAX_ACTIVE_LISTINGS) {
+      if ((await countTowardCap(tx, user.userId)) > listingCap(user.isAdmin)) {
         throw new ListingCapReached();
       }
     });
@@ -351,7 +362,7 @@ export async function setListingStatus(actor: Actor, input: unknown): Promise<vo
       .update(listings)
       .set({ status, takenAt: status === 'taken' ? new Date() : null })
       .where(eq(listings.id, listingId));
-    if ((await countTowardCap(tx, user.userId)) > MAX_ACTIVE_LISTINGS) {
+    if ((await countTowardCap(tx, user.userId)) > listingCap(user.isAdmin)) {
       throw new ListingCapReached();
     }
   });

@@ -1,5 +1,5 @@
 import { and, eq, sql, type SQL } from 'drizzle-orm';
-import type { ListingType } from '@/lib/listing-options';
+import { toListingType, type ListingType } from '@/lib/listing-options';
 import type { LngLat } from '@/lib/validation/listing';
 import { favorites, listingPhotos, listings, schools } from '@/server/db/schema';
 import { photoUrls } from './photos';
@@ -24,7 +24,11 @@ export type ListingCard = {
   isNew: boolean;
 };
 
-type CardRow = Omit<ListingCard, 'coverThumbUrl'> & { coverPath: string | null };
+// The row's type is the raw database enum, which still includes the legacy 'room'.
+type CardRow = Omit<ListingCard, 'coverThumbUrl' | 'type'> & {
+  type: string;
+  coverPath: string | null;
+};
 
 // The card projection is the public one: it never carries the unit or street address.
 export const CARD_COLUMNS = {
@@ -65,7 +69,7 @@ export function toListingCard(row: CardRow): ListingCard {
     id: row.id,
     schoolSlug: row.schoolSlug,
     title: row.title,
-    type: row.type,
+    type: toListingType(row.type),
     rentCents: row.rentCents,
     availableFrom: row.availableFrom,
     availableTo: row.availableTo,

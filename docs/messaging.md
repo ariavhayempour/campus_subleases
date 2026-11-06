@@ -10,7 +10,10 @@ Code: `server/services/messaging.ts` (writes), `messaging-reads.ts` (inbox, thre
 
 1. A signed-in student opens a public listing they do not own. The listing page shows **Message
    host** (`MessageHostButton`) to every viewer except the owner and admins. Signed out, it is
-   Clerk's `SignInButton` in redirect mode, which returns to the listing after sign-in.
+   Clerk's `SignUpButton` in redirect mode, since most signed-out visitors have no account yet. A
+   returning user follows the form's "Sign in" link, which carries the return URL, and lands back
+   on the listing. A new account goes through onboarding and then back to the listing (see "Return after
+   sign-up" in `auth.md`).
 2. Signed in, it links to `/messages/new?listing=<id>`. If the viewer already has a conversation
    on that listing the button reads **View conversation** and links straight to it.
 3. `/messages/new` calls `getConversationStart`. A missing, non-public, own, or blocked listing is
@@ -214,7 +217,7 @@ Live delivery is a convenience on top of the database, which is the source of tr
   fails a send; without the publishable key the browser relies on refetch on focus.
 - **Messages cannot be edited or deleted** by users.
 - **"Message host" is not shown to the listing's owner** (or admins). Signed out, it is Clerk's
-  `SignInButton` in redirect mode.
+  `SignUpButton` in redirect mode.
 - **The local Clerk domain is committed** in `supabase/config.toml` (`[auth.third_party.clerk]`).
   It is the dev instance's public Frontend API domain, not a secret.
 - **E2E uses two real Clerk test users** (`E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER2_EMAIL`). The

@@ -1,6 +1,6 @@
 'use client';
 
-import { SignInButton } from '@clerk/nextjs';
+import { SignUpButton } from '@clerk/nextjs';
 import { Heart } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { setFavoriteAction } from '@/app/me/favorites/actions';
@@ -41,12 +41,12 @@ export function FavoriteButton({
 
   if (!signedIn) {
     return (
-      <SignInButton mode="redirect">
+      <SignUpButton mode="redirect">
         <button type="button" aria-label={label} className={cn(buttonClass, className)}>
           {icon}
           {text}
         </button>
-      </SignInButton>
+      </SignUpButton>
     );
   }
 

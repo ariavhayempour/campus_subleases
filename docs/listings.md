@@ -21,9 +21,15 @@
 
 ## Rules (enforced in `server/services/listings.ts`)
 
-- **Cap:** at most 2 listings that are active, `pending`/`approved`/`hidden`, and not expired
-  (`countsTowardCap`).
-- **Rate limits:** 5 new listings per rolling 24 h (listings table); 20 photo uploads per rolling
+- **Cap:** at most 1 listing that is active, `pending`/`approved`/`hidden`, and not expired
+  (`countsTowardCap`, `MAX_ACTIVE_LISTINGS`). Admins are exempt (`listingCap`).
+- **Home school:** a non-admin can only create a listing in their home school (`ValidationError` on
+  `schoolId` otherwise), and the form offers only that school. Admins pick any school.
+- **Cross-school viewing:** a signed-in non-admin can open another school's public listing
+  (`ListingDetail.crossSchool`) but cannot message, save, or report it; `startConversation`,
+  `setFavorite` (saving only) and `createReport` (listings) throw `Forbidden`
+  (`server/services/school-lock.ts`). The page hides those actions and says why.
+- **Rate limits:** 5 new listings per rolling 24 h per non-admin (listings table); 20 photo uploads per rolling
   hour, counted from objects under `listings/{userId}/` in the `uploads` bucket created in the
   last hour.
 - **Limit-check order:** photo processing (sharp) is the expensive step, and raw uploads survive a
@@ -48,8 +54,18 @@
 - **Stale edits:** `updateListing` re-reads the listing (`FOR UPDATE`) and its photo ids inside
   the transaction and throws `Conflict` if the review status or photo set changed since the edit
   began (for example an admin hid the listing). Sharp work stays outside the transaction.
-- **Normalization:** `private_bathroom` is NULL unless `type = room`; gender preference is forced
-  to `any` unless the space is shared (`room` or roommates > 0); blank unit → NULL.
+- **Normalization:** `private_bathroom` is NULL unless `roommates_count > 0`; blank unit → NULL;
+  `room_features` and `amenities` are de-duplicated.
+- **Form model:** the details step reveals groups in order, each once the previous is answered
+  (`lib/listing-reveal.ts`; edit mode shows all): property type (`apartment` or `house`, fixed after
+  creation) → bedrooms, bathrooms, roommates (0 reads "No roommates") → gender preference (always
+  asked) → room type (`single` or `shared`) → room features, furnished, and a private-bathroom
+  answer when roommates > 0 → amenities. `amenities` must come from the list for the property type
+  (`HOUSE_AMENITIES` or `APARTMENT_AMENITIES` in `lib/listing-options.ts`); on a house edit,
+  stored amenities outside the house list are dropped on load.
+- **Legacy `room` type:** migration `0011` converted `room` listings to `apartment` and kept the
+  value in the Postgres enum until a contract migration; app code reads any `room` as `apartment`
+  (`toListingType`).
 - Non-owners get `NotFound` (not `Forbidden`) for edit, status, and delete. A malformed
   (non-UUID) id in `setListingStatus` gets `ValidationError`; it reveals nothing about existence.
 - **Storage cleanup after commit is best-effort.** Raw uploads, removed photos, and a deleted

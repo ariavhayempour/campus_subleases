@@ -20,6 +20,8 @@ const validInput = (overrides: Partial<ListingInput> = {}): ListingInput => ({
   roommatesCount: 0,
   privateBathroom: null,
   genderPreference: 'any',
+  roomType: 'single',
+  roomFeatures: [],
   address: '123 State St',
   unit: '',
   city: 'Madison',
@@ -50,11 +52,67 @@ describe('listingInputSchema', () => {
     ]);
   });
 
-  it('requires a private-bathroom answer for rooms', () => {
-    expect(fieldErrors(validInput({ type: 'room' })).privateBathroom).toEqual([
+  it('requires a private-bathroom answer only when there are roommates', () => {
+    expect(fieldErrors(validInput({ roommatesCount: 2 })).privateBathroom).toEqual([
       'Say whether the bathroom is private',
     ]);
-    expect(fieldErrors(validInput({ type: 'room', privateBathroom: false }))).toEqual({});
+    expect(fieldErrors(validInput({ roommatesCount: 2, privateBathroom: false }))).toEqual({});
+    expect(fieldErrors(validInput({ roommatesCount: 0, privateBathroom: null }))).toEqual({});
+    expect(fieldErrors(validInput({ roommatesCount: 0, privateBathroom: true }))).toEqual({});
+  });
+
+  it('reports cross-field problems together with other field errors', () => {
+    const errors = fieldErrors(
+      validInput({
+        rentDollars: Number.NaN,
+        type: 'house',
+        amenities: ['gym'],
+        roommatesCount: 2,
+        privateBathroom: null,
+        availableTo: '2027-01-01',
+      }),
+    );
+    expect(errors.rentDollars).toBeDefined();
+    expect(errors.amenities).toBeDefined();
+    expect(errors.privateBathroom).toBeDefined();
+    expect(errors.availableTo).toBeDefined();
+  });
+
+  it('does not crash on cross-field checks when the type or amenities are missing', () => {
+    expect(() =>
+      fieldErrors({
+        ...validInput(),
+        type: undefined,
+        amenities: undefined,
+        roommatesCount: undefined,
+      }),
+    ).not.toThrow();
+  });
+
+  it('no longer accepts the room type', () => {
+    expect(fieldErrors({ ...validInput(), type: 'room' }).type).toBeDefined();
+  });
+
+  it('requires a room type, a gender preference, and known room features', () => {
+    expect(fieldErrors({ ...validInput(), roomType: undefined }).roomType).toEqual([
+      'Choose single or shared',
+    ]);
+    expect(
+      fieldErrors({ ...validInput(), genderPreference: undefined }).genderPreference,
+    ).toBeDefined();
+    expect(fieldErrors({ ...validInput(), roomFeatures: ['desk', 'lamp'] })).toEqual({});
+    expect(fieldErrors({ ...validInput(), roomFeatures: ['hot_tub'] }).roomFeatures).toBeDefined();
+  });
+
+  it('only accepts amenities from the list for the property type', () => {
+    expect(fieldErrors(validInput({ type: 'house', amenities: ['gym'] })).amenities).toEqual([
+      "Some amenities don't apply to this property type",
+    ]);
+    expect(fieldErrors(validInput({ type: 'house', amenities: ['garage', 'yard'] }))).toEqual({});
+    expect(
+      fieldErrors(validInput({ type: 'apartment', amenities: ['garage'] })).amenities,
+    ).toBeDefined();
+    expect(fieldErrors(validInput({ type: 'apartment', amenities: ['pool', 'gym'] }))).toEqual({});
   });
 
   it('requires an address chosen from the suggestions', () => {
@@ -83,7 +141,7 @@ describe('listingInputSchema', () => {
   it('validates the ZIP code and amenities', () => {
     expect(fieldErrors(validInput({ zip: '5370' })).zip).toEqual(['Enter a 5-digit ZIP code']);
     expect(fieldErrors(validInput({ zip: '53703-1234' }))).toEqual({});
-    expect(fieldErrors({ ...validInput(), amenities: ['pool'] }).amenities).toBeDefined();
+    expect(fieldErrors({ ...validInput(), amenities: ['hot_tub'] }).amenities).toBeDefined();
   });
 });
 

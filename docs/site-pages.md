@@ -96,3 +96,29 @@ non-production branch, Vercel omits that header and staging must add its own `no
   the sitemap against the seeded schools.
 - `e2e/static-pages.spec.ts`: pages and footer links, robots/sitemap over HTTP, and the contact
   form with the Web3Forms request intercepted (no real email is sent).
+
+## Landing page (`/`)
+
+`app/page.tsx` is the signed-out landing page. Signed-in users never see it: students who still
+need onboarding go to `/onboarding`, everyone else with a home school goes to `/{school}`.
+
+Sections, top to bottom: an ink hero (headline, lede, **Create your free account** linking to
+`/sign-up`, and "or look around first" jumping to the ribbon), the school ribbon, a "leaving /
+looking" section with an illustrative term timeline, the three sign-up steps, the platform's
+promises (students only, every listing reviewed, free, unit number private), and a closing call to
+action with a "Don't see your school? Tell us" link to `/contact`. Copy states only product facts;
+there are no counts or testimonials.
+
+**School ribbon** (`app/_components/school-ribbon.tsx`) lists every active school from
+`listActiveSchools()`, so new schools appear without code changes. Each block is a link to the
+school's browse page, wearing that school's colors via `schoolThemeStyle`. The list is repeated
+until half the row covers a 2560px screen, then the row scrolls itself sideways (32px/s) and wraps
+at the halfway point, which makes the loop seamless. Only the first copy is in the accessibility
+tree and tab order (repeats are `aria-hidden` with `tabIndex={-1}`, but stay clickable). Motion stops while the pointer is over
+the row, while anything in it has focus, during a touch, when the tab is hidden, and when the
+visitor presses **Pause**. While paused it shows a thin scrollbar. Under `prefers-reduced-motion` it renders one copy
+as a wrapping grid that shows every school, with no Pause button. It moves `scrollLeft` rather than a CSS transform, so focus
+and manual scrolling bring any block into view.
+
+The header's bottom stripe is hidden on `/` for signed-out visitors so the ink header runs
+straight into the ink hero (`HeaderStripe` in `app/_components/header-brand.tsx`).

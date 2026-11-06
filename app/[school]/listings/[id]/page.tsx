@@ -33,6 +33,9 @@ import {
   AMENITY_LABELS,
   GENDER_PREFERENCE_LABELS,
   LISTING_TYPE_LABELS,
+  ROOM_FEATURE_LABELS,
+  ROOM_TYPE_LABELS,
+  roommatesLabel,
 } from '@/lib/listing-options';
 import { listingBadges } from '@/lib/listing-rules';
 import { SAFETY_NOTICE } from '@/lib/messaging-options';
@@ -85,6 +88,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
   const brand = brandRow ? schoolBrand(brandRow) : null;
   const campusName = brand?.campusName ?? listing.school.name;
   const visitor = listing.viewer === 'visitor';
+  const canInteract = visitor && !listing.crossSchool;
 
   const facts: { icon: ReactNode; label: string; value: string }[] = [
     { icon: <House />, label: 'Type', value: LISTING_TYPE_LABELS[listing.type] },
@@ -94,11 +98,8 @@ export default async function ListingPage({ params }: ListingPageProps) {
       value: listing.bedrooms === 0 ? 'Studio' : String(listing.bedrooms),
     },
     { icon: <Bath />, label: 'Bathrooms', value: String(listing.bathrooms) },
-    {
-      icon: <Users />,
-      label: 'Roommates staying',
-      value: listing.roommatesCount === 0 ? 'None' : String(listing.roommatesCount),
-    },
+    { icon: <Users />, label: 'Roommates', value: roommatesLabel(listing.roommatesCount) },
+    { icon: <BedDouble />, label: 'Room type', value: ROOM_TYPE_LABELS[listing.roomType] },
     { icon: <Sofa />, label: 'Furnished', value: listing.furnished ? 'Yes' : 'No' },
     ...(listing.privateBathroom === null
       ? []
@@ -202,14 +203,21 @@ export default async function ListingPage({ params }: ListingPageProps) {
                   </dd>
                 </div>
               </dl>
-              {visitor && (
+              {listing.crossSchool && (
+                <p className="flex gap-2.5 rounded-md bg-surface-2 p-3 text-sm text-ink-2">
+                  <Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                  This listing is at another school. You can look around, but messaging, saving, and
+                  reporting are only available for listings at your own school.
+                </p>
+              )}
+              {canInteract && (
                 <MessageHostButton
                   listingId={listing.id}
                   conversationId={listing.conversationId}
                   signedIn={actor.kind === 'user'}
                 />
               )}
-              {visitor && (
+              {canInteract && (
                 <FavoriteButton
                   listingId={listing.id}
                   listingTitle={listing.title}
@@ -277,6 +285,19 @@ export default async function ListingPage({ params }: ListingPageProps) {
             <TermTimelineBar from={listing.availableFrom} to={listing.availableTo} size="full" />
           </Section>
 
+          {listing.roomFeatures.length > 0 && (
+            <Section title="The room">
+              <ul className="grid gap-x-6 gap-y-3 text-[15px] text-ink sm:grid-cols-2">
+                {listing.roomFeatures.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2.5">
+                    <Check aria-hidden="true" className="size-4 text-ok" />
+                    {ROOM_FEATURE_LABELS[feature]}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
           {listing.amenities.length > 0 && (
             <Section title="Amenities">
               <ul className="grid gap-x-6 gap-y-3 text-[15px] text-ink sm:grid-cols-2">
@@ -308,7 +329,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
             )}
           </Section>
 
-          {visitor && actor.kind === 'user' && (
+          {canInteract && actor.kind === 'user' && (
             <div className="border-t border-line pt-5">
               <ReportButton
                 targetType="listing"

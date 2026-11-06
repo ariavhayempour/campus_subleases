@@ -9,7 +9,13 @@ import { onboardingSchema, type OnboardingInput } from '@/lib/validation/onboard
 import type { SchoolSummary } from '@/server/services/schools';
 import { completeOnboardingAction } from './actions';
 
-export function OnboardingForm({ schools }: { schools: SchoolSummary[] }) {
+export function OnboardingForm({
+  schools,
+  returnPath,
+}: {
+  schools: SchoolSummary[];
+  returnPath: string | null;
+}) {
   const {
     register,
     handleSubmit,
@@ -21,7 +27,7 @@ export function OnboardingForm({ schools }: { schools: SchoolSummary[] }) {
   });
 
   async function onSubmit(values: OnboardingInput) {
-    const result = await completeOnboardingAction(values);
+    const result = await completeOnboardingAction(values, returnPath);
     if (result.ok) return;
     const message = result.error.fieldErrors?.homeSchoolId?.[0];
     if (message) setError('homeSchoolId', { message });

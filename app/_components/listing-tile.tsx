@@ -21,7 +21,7 @@ const usd = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   maximumFractionDigits: 0,
 });
-const SHORT_TYPE = { apartment: 'Apartment', house: 'House', room: 'Room' } as const;
+const SHORT_TYPE = { apartment: 'Apartment', house: 'House' } as const;
 
 export function ListingTile({
   card,

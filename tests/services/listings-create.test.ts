@@ -75,8 +75,10 @@ describe('createListing', () => {
         listingInput(school.id, [first, second], {
           genderPreference: 'women',
           privateBathroom: true,
+          roomType: 'shared',
+          roomFeatures: ['desk', 'desk', 'lamp'],
           unit: '  ',
-          amenities: ['gym', 'dishwasher'],
+          amenities: ['gym', 'dishwasher', 'gym'],
         }),
       );
       expect(result.schoolSlug).toBe(school.slug);
@@ -87,8 +89,10 @@ describe('createListing', () => {
         reviewStatus: 'pending',
         status: 'active',
         rentCents: 95_000,
-        genderPreference: 'any',
+        genderPreference: 'women',
         privateBathroom: null,
+        roomType: 'shared',
+        roomFeatures: ['desk', 'lamp'],
         unit: null,
         amenities: ['gym', 'dishwasher'],
       });
@@ -111,14 +115,14 @@ describe('createListing', () => {
       }
     }));
 
-  it('keeps the gender preference for shared spaces', () =>
+  it('keeps the gender preference and private bathroom when there are roommates', () =>
     withRollback(async () => {
       const ownerId = await owner();
       const school = await createSchool();
       const result = await create(
         ownerId,
         listingInput(school.id, [await uploadedPhoto(ownerId)], {
-          type: 'room',
+          roommatesCount: 2,
           privateBathroom: false,
           genderPreference: 'women',
         }),
@@ -172,15 +176,65 @@ describe('createListing', () => {
       expect(foreign).toBeInstanceOf(ValidationError);
     }));
 
-  it('enforces the cap of 2 counting listings', () =>
+  it('enforces the cap of 1 counting listing', () =>
     withRollback(async () => {
       const ownerId = await owner();
       const school = await createSchool();
       await insertListing(ownerId, school.id, { reviewStatus: 'approved' });
-      await insertListing(ownerId, school.id, { reviewStatus: 'hidden' });
       await expect(
         createListing(actorFor(ownerId), listingInput(school.id, [fakeUpload(ownerId)])),
       ).rejects.toBeInstanceOf(ListingCapReached);
+    }));
+
+  it('lets admins post past the cap', () =>
+    withRollback(async () => {
+      const ownerId = await owner();
+      const school = await createSchool();
+      await insertListing(ownerId, school.id, { reviewStatus: 'approved' });
+      const result = await createListing(
+        actorFor(ownerId, true),
+        listingInput(school.id, [await uploadedPhoto(ownerId)]),
+      );
+      listingIds.push(result.id);
+      expect(result.schoolSlug).toBe(school.slug);
+    }));
+
+  it('does not apply the daily rate limit to admins', () =>
+    withRollback(async () => {
+      const ownerId = await owner();
+      const school = await createSchool();
+      for (let i = 0; i < 5; i += 1) {
+        await insertListing(ownerId, school.id, { status: 'removed' });
+      }
+      const result = await createListing(
+        actorFor(ownerId, true),
+        listingInput(school.id, [await uploadedPhoto(ownerId)]),
+      );
+      listingIds.push(result.id);
+
+      const studentId = await owner();
+      for (let i = 0; i < 5; i += 1) {
+        await insertListing(studentId, school.id, { status: 'removed' });
+      }
+      await expect(
+        createListing(actorFor(studentId), listingInput(school.id, [fakeUpload(studentId)])),
+      ).rejects.toBeInstanceOf(RateLimited);
+    }));
+
+  it('keeps students to their home school but not admins', () =>
+    withRollback(async () => {
+      const home = await createSchool();
+      const other = await createSchool();
+      const user = await createUser({ homeSchoolId: home.id });
+      users.push(user.id);
+      await expect(
+        createListing(actorFor(user.id), listingInput(other.id, [fakeUpload(user.id)])),
+      ).rejects.toBeInstanceOf(ValidationError);
+      const result = await createListing(
+        actorFor(user.id, true),
+        listingInput(other.id, [await uploadedPhoto(user.id)]),
+      );
+      listingIds.push(result.id);
     }));
 
   it('does not count rejected, taken, removed, or expired listings', () =>
@@ -201,7 +255,6 @@ describe('createListing', () => {
         availableTo: '2020-06-01',
         createdAt,
       });
-      await insertListing(ownerId, school.id);
       await expect(
         create(ownerId, listingInput(school.id, [await uploadedPhoto(ownerId)])),
       ).resolves.toMatchObject({ schoolSlug: school.slug });

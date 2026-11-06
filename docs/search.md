@@ -2,6 +2,9 @@
 
 ## Browse page (`/[school]`)
 
+Signed-in non-admins are redirected to their home school's browse page. Admins get a school dropdown
+in the school band (`school-switcher.tsx`) that navigates to `/<slug>` with filters cleared.
+
 - Public, indexable. Server component: parses the URL into `SearchFilters`
   (`parseSearchParams` in `lib/validation/search.ts`), then calls `searchListings` (24 cards)
   and `searchMapPins` (up to 500 pins) in parallel.
@@ -65,10 +68,12 @@
   inclusive on both ends; either end may be open.
 - **Bedrooms is an exact count**; the "4+" option means 4 or more. (Owner-visible decision; the
   spec only says "bedrooms".)
-- **Private bathroom** matches rooms with `private_bathroom = true` and whole apartments/houses
-  with no roommates (their `private_bathroom` is NULL by design).
+- **Type** filters apartment or house only. **Private bathroom** matches listings with
+  `private_bathroom = true` and any listing with no roommates (its `private_bathroom` is NULL by
+  design).
 - Gender: a chosen preference matches listings with that value or `any`.
-- Amenities: must have all selected (`amenities @> …`).
+- Amenities: must have all selected (`amenities @> …`). Only the ten `FILTERABLE_AMENITIES` are
+  offered and parsed; the rest appear on the listing page only.
 - Distance: `ST_DWithin(location, campus, km * 1000)`; map area: `location::geometry &&
 ST_MakeEnvelope(…, 4326)`.
 - **Cards and pins never include the unit or street address** (`CARD_COLUMNS` in
@@ -88,7 +93,9 @@ ST_MakeEnvelope(…, 4326)`.
   unsaved, `Remove “{title}” from saved` when saved. Each name contains the visible text, so
   voice control still matches it. There is no `aria-pressed`, since the name already states the
   action. Signed out, it
-  is Clerk's `SignInButton` (redirect mode), which returns to the current page after sign-in.
+  is Clerk's `SignUpButton` (redirect mode). A returning user takes the form's "Sign in" link, which
+  carries the return URL back to the current page; a new account goes through onboarding and then
+  back to the same page (see "Return after sign-up" in `auth.md`).
   A failed or rejected save rolls the heart back and shows a visible `role="alert"` message
   (a small bubble under the heart on tiles, a line under the button on the detail page).
 

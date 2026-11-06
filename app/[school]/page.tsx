@@ -1,6 +1,7 @@
 import { House, SearchX } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { SchoolBand } from '@/app/_components/school-band';
 import { todayIso } from '@/lib/term-timeline';
@@ -13,11 +14,13 @@ import {
   type RawSearchParams,
 } from '@/lib/validation/search';
 import { getActor } from '@/server/auth/get-actor';
-import { getActiveSchoolBySlug, schoolBrand } from '@/server/services/schools';
+import { getActiveSchoolBySlug, listActiveSchools, schoolBrand } from '@/server/services/schools';
 import { searchListings, searchMapPins } from '@/server/services/search';
+import { getOnboardingState } from '@/server/services/users';
 import { ActiveFilters } from './_components/active-filters';
 import { BrowseFilters } from './_components/browse-filters';
 import { BrowseView } from './_components/browse-view';
+import { SchoolSwitcher } from './_components/school-switcher';
 
 type SchoolPageProps = {
   params: Promise<{ school: string }>;
@@ -38,6 +41,12 @@ export default async function SchoolPage({ params, searchParams }: SchoolPagePro
     searchParams,
     getActor(),
   ]);
+  // Students are locked to their home school; only admins browse the others.
+  if (actor.kind === 'user' && !actor.isAdmin) {
+    const { homeSchoolSlug } = await getOnboardingState(actor);
+    if (homeSchoolSlug && homeSchoolSlug !== school.slug) redirect(`/${homeSchoolSlug}`);
+  }
+  const switchable = actor.kind === 'user' && actor.isAdmin ? await listActiveSchools() : null;
   const filters = parseSearchParams(raw);
   const query = toSearchParams(filters).toString();
   const [results, pins] = await Promise.all([
@@ -76,10 +85,13 @@ export default async function SchoolPage({ params, searchParams }: SchoolPagePro
         school={brand}
         heading={`Subleases near ${school.name}`}
         aside={
-          <p className="sm:text-right">
-            <b className="numeral block text-[2.125rem]">{results.total}</b>
-            <span className="text-[13px]">{results.total === 1 ? 'listing' : 'listings'}</span>
-          </p>
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            {switchable && <SchoolSwitcher current={school.slug} schools={switchable} />}
+            <p className="sm:text-right">
+              <b className="numeral block text-[2.125rem]">{results.total}</b>
+              <span className="text-[13px]">{results.total === 1 ? 'listing' : 'listings'}</span>
+            </p>
+          </div>
         }
       />
       <div className="z-20 border-b border-line bg-background md:sticky md:top-0">

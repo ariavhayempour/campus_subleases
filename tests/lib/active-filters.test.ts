@@ -13,7 +13,7 @@ describe('activeFilterChips', () => {
       rentMin: 500,
       rentMax: 1200,
       from: '2027-05-01',
-      type: 'room' as const,
+      type: 'house' as const,
       maxRoommates: 0,
       sort: 'rent_asc' as const,
     };
@@ -22,14 +22,14 @@ describe('activeFilterChips', () => {
       '“balcony”',
       '$500–$1,200',
       'From May 1, 2027',
-      'Room in a shared place',
+      'House',
       'No roommates',
     ]);
     const rent = chips.find((c) => c.key === 'rent');
     expect(rent?.without).toEqual({
       q: 'balcony',
       from: '2027-05-01',
-      type: 'room',
+      type: 'house',
       maxRoommates: 0,
       sort: 'rent_asc',
     });
