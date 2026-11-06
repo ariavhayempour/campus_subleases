@@ -13,9 +13,11 @@ app/                 routes, UI, server actions, /api/webhooks/clerk, /api/cron/
   admin/             admin pages (listings, reports, users, conversations, stats, audit);
                      desktop-only
   _components/       shared app components (site header, MessagingProvider: the one Realtime
-                     subscription and unread count, mounted in the root layout)
+                     subscription and unread count, SchoolThemeProvider: per-school colors;
+                     all mounted in the root layout; see design-system.md)
   _lib/              app glue: action results, guards, the
-                     browser Realtime subscription (realtime-client.ts)
+                     browser Realtime subscription (realtime-client.ts), the theme context
+proxy.ts             Clerk middleware; also passes the request path to the root layout
 server/auth/         Clerk session → Actor (calls services only)
 server/clerk/        Clerk Backend API wrapper (users.ts); only services call it
 server/services/     all business rules; the only importers of server/db

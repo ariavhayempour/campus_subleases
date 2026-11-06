@@ -78,7 +78,8 @@ Architecture and technical documentation live in [`docs/claude/`](docs/claude/).
 
 - [`listings.md`](docs/claude/listings.md), [`search.md`](docs/claude/search.md),
   [`messaging.md`](docs/claude/messaging.md), [`moderation.md`](docs/claude/moderation.md),
-  [`admin.md`](docs/claude/admin.md), [`site-pages.md`](docs/claude/site-pages.md)
+  [`admin.md`](docs/claude/admin.md), [`site-pages.md`](docs/claude/site-pages.md),
+  [`design-system.md`](docs/claude/design-system.md) (school colors, tokens, shared UI)
 - [`database.md`](docs/claude/database.md), [`services.md`](docs/claude/services.md),
   [`auth.md`](docs/claude/auth.md), [`storage.md`](docs/claude/storage.md)
 - [`environment.md`](docs/claude/environment.md) (variables, CI, secrets),
