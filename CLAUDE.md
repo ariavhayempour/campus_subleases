@@ -69,7 +69,7 @@ pnpm typecheck        # next typegen (route types) + tsc --noEmit
   `page.tsx`, `layout.tsx`, `route.ts` excepted)
 - Route handlers return `Response` objects with explicit status + content-type
 - Comments: default to one concise line for a non-obvious why; push anything longer
-  into `docs/claude/` (see rule 2). No multi-paragraph doc-comment essays, no
+  into `docs/` (see rule 2). No multi-paragraph doc-comment essays, no
   restating what the code does, no comment rot
 - Ask before adding any dependency beyond the approved list in the design spec (§2), changing the
   package manager, adding a UI component library, adding `vercel.json` overrides,
@@ -77,7 +77,7 @@ pnpm typecheck        # next typegen (route types) + tsc --noEmit
 
 ## Documentation
 
-- `docs/claude/` - all project documentation (architecture, decisions, structure)
+- `docs/` - all project documentation (architecture, decisions, structure)
 - `docs/superpowers/` - design specs and plans (planning artifacts, untracked)
 
 ## Working Rules
@@ -90,16 +90,16 @@ Always read this `CLAUDE.md` at the start of every session, and again whenever
 context is cleared. Understand the guidelines below and follow them throughout
 the session.
 
-### 2. Documentation lives in `docs/claude/`
+### 2. Documentation lives in `docs/`
 
-All project documentation belongs in Markdown files under `docs/claude/`. Keep
+All project documentation belongs in Markdown files under `docs/`. Keep
 code comments to a single concise line — enough to clarify intent, never more.
 Push anything longer into the docs.
 
 ### 3. Review the docs before acting
 
 Before planning or building anything, review the relevant files in
-`docs/claude/` (and the design spec in `docs/superpowers/specs/`) to understand
+`docs/` (and the design spec in `docs/superpowers/specs/`) to understand
 existing dependencies, decisions, and structure. Let the docs inform the plan.
 
 ### 4. Never commit, stage, or push
@@ -130,4 +130,4 @@ other story numbers freely — this rule is about code comments only.)
 ## Common Mistakes
 
 - Run `pnpm build`, `pnpm typecheck`, `pnpm lint`, and `pnpm test` before declaring a task done
-- Add code-file comments longer than one line into a respective `docs/claude` file.
+- Add code-file comments longer than one line into a respective `docs` file.

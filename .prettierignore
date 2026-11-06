@@ -10,4 +10,4 @@ supabase/.temp
 # planning artifacts
 .superpowers
 .impeccable
-DESIGN.md
+docs/DESIGN.md

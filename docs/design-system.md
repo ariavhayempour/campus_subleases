@@ -2,7 +2,7 @@
 
 The UI follows the "Varsity Program" direction: each school's pages wear that school's colors, in
 the way a school applies its athletic graphic standards. Product facts and brand rules live in
-`PRODUCT.md`; the direction contract lives in `.impeccable/surfaces/app.md`.
+`PRODUCT.md` (same folder); the direction contract lives in `.impeccable/surfaces/app.md`.
 
 ## School colors are data
 
