@@ -16,8 +16,10 @@ describe('revealedGroups', () => {
   it('reveals gender only when bedrooms, bathrooms, and roommates are answered', () => {
     expect(revealedGroups({ type: 'house', bedrooms: 2, bathrooms: 1 }, false).gender).toBe(false);
     expect(
-      revealedGroups({ type: 'house', bedrooms: 2, bathrooms: 1, roommatesCount: Number.NaN }, false)
-        .gender,
+      revealedGroups(
+        { type: 'house', bedrooms: 2, bathrooms: 1, roommatesCount: Number.NaN },
+        false,
+      ).gender,
     ).toBe(false);
     expect(revealedGroups({ type: 'house', ...counts }, false).gender).toBe(true);
   });
@@ -36,12 +38,14 @@ describe('revealedGroups', () => {
       room: true,
       amenities: false,
     });
-    expect(revealedGroups({ ...base, genderPreference: 'any', roomType: 'single' }, false)).toEqual({
-      counts: true,
-      gender: true,
-      room: true,
-      amenities: true,
-    });
+    expect(revealedGroups({ ...base, genderPreference: 'any', roomType: 'single' }, false)).toEqual(
+      {
+        counts: true,
+        gender: true,
+        room: true,
+        amenities: true,
+      },
+    );
   });
 
   it('reveals everything when showing all', () => {

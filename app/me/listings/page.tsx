@@ -53,7 +53,8 @@ export default async function MyListingsPage({ searchParams }: MyListingsPagePro
           <span className="font-semibold text-ink">Admins have no listing limit.</span>
         ) : (
           <>
-            You can have {MAX_ACTIVE_LISTINGS} active {MAX_ACTIVE_LISTINGS === 1 ? 'listing' : 'listings'}.{' '}
+            You can have {MAX_ACTIVE_LISTINGS} active{' '}
+            {MAX_ACTIVE_LISTINGS === 1 ? 'listing' : 'listings'}.{' '}
             <span className="font-semibold text-ink">
               {open === 0 ? 'Your slot is in use.' : 'Your slot is open.'}
             </span>

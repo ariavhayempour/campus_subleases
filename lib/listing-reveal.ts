@@ -7,7 +7,12 @@ export type RevealValues = {
   roomType?: string;
 };
 
-export type RevealedGroups = { counts: boolean; gender: boolean; room: boolean; amenities: boolean };
+export type RevealedGroups = {
+  counts: boolean;
+  gender: boolean;
+  room: boolean;
+  amenities: boolean;
+};
 
 // Each group appears once the one before it is answered; edit mode shows them all.
 export function revealedGroups(values: RevealValues, showAll: boolean): RevealedGroups {

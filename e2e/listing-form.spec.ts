@@ -28,9 +28,7 @@ test('the listing form reveals each group in order and swaps amenities by proper
     await bedrooms.fill('3');
     await page.getByLabel('Bathrooms').fill('2');
     await page.getByLabel('Roommates').selectOption('0');
-    await expect(page.getByLabel('Roommates').locator('option:checked')).toHaveText(
-      'No roommates',
-    );
+    await expect(page.getByLabel('Roommates').locator('option:checked')).toHaveText('No roommates');
     await expect(gender).toBeVisible();
     await expect(roomType).toHaveCount(0);
 
