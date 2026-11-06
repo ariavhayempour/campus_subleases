@@ -42,9 +42,9 @@ export function ContactForm() {
 
   if (sentTo) {
     return (
-      <div role="status" className="rounded-lg border p-4">
-        <p className="font-medium">Thanks, your message was sent.</p>
-        <p className="text-muted-foreground">We will reply to {sentTo}.</p>
+      <div role="status" className="rounded-md bg-ok-bg p-5 text-ok">
+        <p className="font-semibold">Thanks, your message was sent.</p>
+        <p className="text-ink-2">We will reply to {sentTo}.</p>
         <Button variant="outline" className="mt-3" onClick={() => setSentTo(null)}>
           Send another message
         </Button>
@@ -53,7 +53,11 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="mt-4 space-y-5 rounded-md border border-line bg-surface-2 p-5 sm:p-6"
+      noValidate
+    >
       <div className="space-y-2">
         <Label htmlFor="contact-name">Name</Label>
         <Input
@@ -65,7 +69,7 @@ export function ContactForm() {
           {...register('name')}
         />
         {errors.name && (
-          <p id="contact-name-error" className="text-sm text-destructive">
+          <p id="contact-name-error" className="text-sm font-medium text-bad">
             {errors.name.message}
           </p>
         )}
@@ -81,7 +85,7 @@ export function ContactForm() {
           {...register('email')}
         />
         {errors.email && (
-          <p id="contact-email-error" className="text-sm text-destructive">
+          <p id="contact-email-error" className="text-sm font-medium text-bad">
             {errors.email.message}
           </p>
         )}
@@ -94,11 +98,11 @@ export function ContactForm() {
           maxLength={CONTACT_MESSAGE_MAX_LENGTH}
           aria-invalid={Boolean(errors.message)}
           aria-describedby={errors.message ? 'contact-message-error' : undefined}
-          className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none aria-invalid:border-destructive md:text-sm"
+          className="w-full rounded-md border border-line-2 bg-background px-3 py-2 text-base text-ink transition-[border-color,box-shadow] outline-none placeholder:text-ink-3 hover:border-ink-3 focus-visible:border-school focus-visible:ring-3 focus-visible:ring-school/20 aria-invalid:border-bad md:text-sm"
           {...register('message')}
         />
         {errors.message && (
-          <p id="contact-message-error" className="text-sm text-destructive">
+          <p id="contact-message-error" className="text-sm font-medium text-bad">
             {errors.message.message}
           </p>
         )}
@@ -114,7 +118,7 @@ export function ContactForm() {
         onChange={(event) => setBotcheck(event.target.checked)}
       />
       {errors.root && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm font-medium text-bad">
           {errors.root.message}
         </p>
       )}

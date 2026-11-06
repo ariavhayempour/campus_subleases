@@ -31,7 +31,7 @@ export function ListingRowActions({ listingId, status, reviewStatus }: ListingRo
   }
 
   return (
-    <div className="flex flex-col items-start gap-2 sm:items-end">
+    <div className="flex flex-col items-start gap-2">
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" size="sm">
           <Link href={`/listings/${listingId}/edit`}>
@@ -67,12 +67,18 @@ export function ListingRowActions({ listingId, status, reviewStatus }: ListingRo
             Reactivate
           </Button>
         )}
-        <Button variant="destructive" size="sm" disabled={pending} onClick={confirmDelete}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-bad hover:bg-bad-bg hover:text-bad"
+          disabled={pending}
+          onClick={confirmDelete}
+        >
           Delete
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm font-medium text-bad">
           {error}
         </p>
       )}

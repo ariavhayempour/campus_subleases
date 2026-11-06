@@ -123,7 +123,7 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
         }}
         aria-label="Messages"
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-6"
       >
         {hasEarlier && (
           <div className="mb-3 text-center">
@@ -131,12 +131,12 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
               type="button"
               onClick={loadEarlier}
               disabled={loading}
-              className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-60"
+              className="rounded-md border border-line-2 px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-2 disabled:opacity-60"
             >
               Load earlier messages
             </button>
             {loadError && (
-              <p role="alert" className="mt-1 text-xs text-destructive">
+              <p role="alert" className="mt-1 text-xs text-bad">
                 Could not load earlier messages. Try again.
               </p>
             )}
@@ -156,12 +156,14 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
         <UnblockNotice otherUserId={thread.otherUser.id} />
       )}
       {thread.composer === 'cannot_reply' && (
-        <p className="border-t p-3 text-sm text-muted-foreground">
+        <p className="border-t border-line bg-surface-2 px-5 py-4 text-sm text-ink-2">
           You can&apos;t reply to this conversation
         </p>
       )}
       {thread.composer === 'deleted_user' && (
-        <p className="border-t p-3 text-sm text-muted-foreground">This account was deleted</p>
+        <p className="border-t border-line bg-surface-2 px-5 py-4 text-sm text-ink-2">
+          This account was deleted
+        </p>
       )}
     </div>
   );

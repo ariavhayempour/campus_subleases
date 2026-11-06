@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LocalTime } from '@/app/_components/local-time';
 import { orAdminNotFound } from '@/app/_lib/guards';
 import { Button } from '@/components/ui/button';
+import { Tag } from '@/app/_components/listing-badge';
 import {
   REPORT_REASONS,
   REPORT_REASON_LABELS,
@@ -12,6 +13,16 @@ import {
 import { getActor } from '@/server/auth/get-actor';
 import { listReports } from '@/server/services/admin-reports';
 import { listActiveSchools } from '@/server/services/schools';
+import {
+  AdminPageHeader,
+  Empty,
+  LINK,
+  SELECT,
+  SchoolLabel,
+  TABLE,
+  TD,
+  TH,
+} from '../_components/admin-ui';
 
 export const metadata: Metadata = { title: 'Admin · Reports' };
 
@@ -21,7 +32,7 @@ const STATUSES = [
   { value: 'all', label: 'All' },
 ];
 
-const SELECT_CLASS = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm';
+const FIELD = 'grid gap-1.5 text-[13px] font-semibold text-ink';
 
 export default async function AdminReportsPage({ searchParams }: PageProps<'/admin/reports'>) {
   const params = await searchParams;
@@ -35,79 +46,99 @@ export default async function AdminReportsPage({ searchParams }: PageProps<'/adm
     listActiveSchools(),
   ]);
 
+  const bySlug = new Map(schools.map((s) => [s.slug, s]));
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
-      <form method="get" action="/admin/reports" className="flex flex-wrap items-center gap-2">
-        <label htmlFor="status-filter" className="text-sm">
+      <AdminPageHeader title="Reports" />
+      <form method="get" action="/admin/reports" className="flex flex-wrap items-end gap-3">
+        <label className={FIELD}>
           Status
+          <select id="status-filter" name="status" defaultValue={status} className={SELECT}>
+            {STATUSES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </label>
-        <select id="status-filter" name="status" defaultValue={status} className={SELECT_CLASS}>
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="school-filter" className="text-sm">
+        <label className={FIELD}>
           School
+          <select id="school-filter" name="school" defaultValue={school} className={SELECT}>
+            <option value="">All schools</option>
+            {schools.map((s) => (
+              <option key={s.id} value={s.slug}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </label>
-        <select id="school-filter" name="school" defaultValue={school} className={SELECT_CLASS}>
-          <option value="">All schools</option>
-          {schools.map((s) => (
-            <option key={s.id} value={s.slug}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="reason-filter" className="text-sm">
+        <label className={FIELD}>
           Reason
+          <select id="reason-filter" name="reason" defaultValue={reason} className={SELECT}>
+            <option value="">All reasons</option>
+            {REPORT_REASONS.map((r) => (
+              <option key={r} value={r}>
+                {REPORT_REASON_LABELS[r]}
+              </option>
+            ))}
+          </select>
         </label>
-        <select id="reason-filter" name="reason" defaultValue={reason} className={SELECT_CLASS}>
-          <option value="">All reasons</option>
-          {REPORT_REASONS.map((r) => (
-            <option key={r} value={r}>
-              {REPORT_REASON_LABELS[r]}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" variant="outline" size="sm">
+        <Button type="submit" variant="outline">
           Filter
         </Button>
       </form>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No reports.</p>
+        <Empty>No reports.</Empty>
       ) : (
-        <table className="w-full text-left text-sm">
-          <thead className="border-b text-muted-foreground">
+        <table className={TABLE}>
+          <thead>
             <tr>
-              <th className="py-2 pr-4 font-medium">Date</th>
-              <th className="py-2 pr-4 font-medium">Reason</th>
-              <th className="py-2 pr-4 font-medium">Type</th>
-              <th className="py-2 pr-4 font-medium">Target</th>
-              <th className="py-2 pr-4 font-medium">School</th>
-              <th className="py-2 pr-4 font-medium">Reporter</th>
-              <th className="py-2 font-medium">Status</th>
+              <th className={TH}>Date</th>
+              <th className={TH}>Reason</th>
+              <th className={TH}>Type</th>
+              <th className={TH}>Target</th>
+              <th className={TH}>School</th>
+              <th className={TH}>Reporter</th>
+              <th className={TH}>Status</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b align-top">
-                <td className="py-2 pr-4 whitespace-nowrap">
-                  <LocalTime iso={row.createdAt.toISOString()} />
-                </td>
-                <td className="py-2 pr-4">
-                  <Link href={`/admin/reports/${row.id}`} prefetch={false} className="underline">
-                    {REPORT_REASON_LABELS[row.reason]}
-                  </Link>
-                </td>
-                <td className="py-2 pr-4">{REPORT_TARGET_LABELS[row.targetType]}</td>
-                <td className="py-2 pr-4">{row.targetLabel}</td>
-                <td className="py-2 pr-4">{row.schoolSlug ?? ''}</td>
-                <td className="py-2 pr-4">{row.reporterName ?? 'Deleted user'}</td>
-                <td className="py-2">{REPORT_STATUS_LABELS[row.status]}</td>
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const rowSchool = row.schoolSlug ? bySlug.get(row.schoolSlug) : undefined;
+              return (
+                <tr key={row.id} className="hover:bg-surface-2">
+                  <td className={`${TD} whitespace-nowrap text-ink-2`}>
+                    <LocalTime iso={row.createdAt.toISOString()} />
+                  </td>
+                  <td className={TD}>
+                    <Link href={`/admin/reports/${row.id}`} prefetch={false} className={LINK}>
+                      {REPORT_REASON_LABELS[row.reason]}
+                    </Link>
+                  </td>
+                  <td className={`${TD} text-ink-2`}>{REPORT_TARGET_LABELS[row.targetType]}</td>
+                  <td className={TD}>{row.targetLabel}</td>
+                  <td className={TD}>
+                    {row.schoolSlug && (
+                      <SchoolLabel
+                        name={rowSchool?.shortName ?? row.schoolSlug}
+                        color={rowSchool?.theme.primary}
+                      />
+                    )}
+                  </td>
+                  <td className={TD}>{row.reporterName ?? 'Deleted user'}</td>
+                  <td className={TD}>
+                    <Tag
+                      className={
+                        row.status === 'open' ? 'bg-warn-bg text-warn' : 'bg-surface-2 text-ink-2'
+                      }
+                    >
+                      {REPORT_STATUS_LABELS[row.status]}
+                    </Tag>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

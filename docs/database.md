@@ -78,7 +78,8 @@ every table; money in integer cents; availability as `date`; locations as geogra
 ## Seed data
 
 Launch schools are inserted by a custom migration (`*_seed-schools.sql`, `ON CONFLICT DO NOTHING`),
-so every environment gets them. Adding a school = a new custom migration with one `INSERT`. School
+so every environment gets them. Adding a school = a new custom migration with one `INSERT`, including
+its branding columns (`short_name`, `city`, `campus_name`, `theme`; see `design-system.md`). School
 slugs share the top-level URL space and must not appear in `lib/reserved-slugs.ts`
 (`tests/services/schools.test.ts` checks every stored slug).
 

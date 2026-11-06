@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { orAdminNotFound } from '@/app/_lib/guards';
 import { conversationFromSchema } from '@/lib/validation/moderation';
 import { getActor } from '@/server/auth/get-actor';
 import { getAdminConversation } from '@/server/services/admin-conversations';
 import { AdminThread } from '../../_components/admin-thread';
+import { AdminPageHeader } from '../../_components/admin-ui';
 
 export const metadata: Metadata = { title: 'Admin · Conversation' };
 
@@ -31,13 +31,9 @@ export default async function AdminConversationPage({
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <Link href={back.href} prefetch={false} className="text-sm underline">
-          {back.label}
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Conversation</h1>
-        <p className="text-sm text-muted-foreground">Admin view: read-only. This view is logged.</p>
-      </header>
+      <AdminPageHeader title="Conversation" back={back}>
+        <p className="text-sm text-ink-2">Admin view: read-only. This view is logged.</p>
+      </AdminPageHeader>
       <AdminThread conversation={conversation} />
     </div>
   );

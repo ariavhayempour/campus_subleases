@@ -6,14 +6,21 @@ on:
   push:
     branches: [main]
     paths: ['server/db/migrations/**']
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Database to migrate
+        type: choice
+        options: [staging, production]
+        default: staging
 
 concurrency:
-  group: migrate-${{ github.event_name == 'push' && 'production' || 'staging' }}
+  group: migrate-${{ (github.event_name == 'pull_request' || inputs.target == 'staging') && 'staging' || 'production' }}
   cancel-in-progress: false
 
 jobs:
   staging:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || inputs.target == 'staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -28,7 +35,7 @@ jobs:
           DATABASE_DIRECT_URL: ${{ secrets.STAGING_DATABASE_DIRECT_URL }}
 
   production:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || inputs.target == 'production'
     runs-on: ubuntu-latest
     environment: production
     steps:

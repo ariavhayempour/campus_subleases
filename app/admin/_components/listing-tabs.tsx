@@ -11,7 +11,7 @@ export const TABS: { key: ReviewStatus; label: string }[] = [
 
 export function ListingTabs({ tab, school }: { tab: ReviewStatus; school: string }) {
   return (
-    <nav aria-label="Review status" className="flex gap-1 border-b">
+    <nav aria-label="Review status" className="flex gap-0.5">
       {TABS.map(({ key, label }) => {
         const query = new URLSearchParams({ tab: key });
         if (school) query.set('school', school);
@@ -23,8 +23,9 @@ export function ListingTabs({ tab, school }: { tab: ReviewStatus; school: string
             prefetch={false}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              '-mb-px border-b-2 border-transparent px-4 py-2 text-sm hover:bg-muted',
-              active && 'border-foreground font-medium',
+              'relative -mb-px px-3.5 py-2.5 text-sm font-semibold text-ink-2 no-underline hover:text-ink',
+              active &&
+                'text-ink after:absolute after:inset-x-2.5 after:bottom-0 after:h-[3px] after:bg-ink',
             )}
           >
             {label}

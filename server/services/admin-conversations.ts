@@ -47,6 +47,7 @@ export async function loadAdminConversation(
       schoolSlug: schools.slug,
       coverPath: listingPhotos.storagePath,
       address: listings.address,
+      rentCents: listings.rentCents,
       unit: listings.unit,
       hostId: host.id,
       hostName: host.displayName,
@@ -79,7 +80,11 @@ export async function loadAdminConversation(
     id: row.id,
     createdAt: row.createdAt,
     listing:
-      row.listingId && row.title !== null && row.schoolSlug !== null && row.address !== null
+      row.listingId &&
+      row.title !== null &&
+      row.schoolSlug !== null &&
+      row.address !== null &&
+      row.rentCents !== null
         ? toThreadListing(
             {
               id: row.listingId,
@@ -87,6 +92,7 @@ export async function loadAdminConversation(
               schoolSlug: row.schoolSlug,
               coverPath: row.coverPath,
               address: row.address,
+              rentCents: row.rentCents,
             },
             row.unit,
             true,

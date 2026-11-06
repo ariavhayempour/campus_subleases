@@ -12,6 +12,8 @@ type BrowseResultsProps = {
   query: string;
   initial: SearchPage;
   signedIn: boolean;
+  campusName: string;
+  timelineStart: string;
   onHover?: (id: string | null) => void;
 };
 
@@ -43,7 +45,15 @@ const appendNew = (shown: ListingCard[], more: ListingCard[]): ListingCard[] => 
   ...more.filter((card) => !shown.some((s) => s.id === card.id)),
 ];
 
-export function BrowseResults({ schoolId, query, initial, signedIn, onHover }: BrowseResultsProps) {
+export function BrowseResults({
+  schoolId,
+  query,
+  initial,
+  signedIn,
+  campusName,
+  timelineStart,
+  onHover,
+}: BrowseResultsProps) {
   const [cards, setCards] = useState(initial.cards);
   const [nextOffset, setNextOffset] = useState(initial.nextOffset);
   const [error, setError] = useState<string | null>(null);
@@ -108,21 +118,36 @@ export function BrowseResults({ schoolId, query, initial, signedIn, onHover }: B
 
   return (
     <div>
-      <ul ref={listRef} className="grid content-start gap-6 sm:grid-cols-2">
+      <ul ref={listRef} className="grid content-start gap-x-6 gap-y-9 sm:grid-cols-2">
         {cards.map((card) => (
           <li key={card.id}>
-            <ListingTile card={card} signedIn={signedIn} onHover={onHover} />
+            <ListingTile
+              card={card}
+              signedIn={signedIn}
+              campusName={campusName}
+              timelineStart={timelineStart}
+              onHover={onHover}
+            />
           </li>
         ))}
       </ul>
       {error && (
-        <p role="alert" className="mt-4 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-6 rounded-md bg-bad-bg px-4 py-3 text-sm font-medium text-bad"
+        >
           {error}
         </p>
       )}
       {nextOffset !== null && (
-        <div className="mt-8 flex justify-center">
-          <Button variant="outline" onClick={loadMore} disabled={pending}>
+        <div className="mt-10 flex justify-center">
+          <Button
+            variant="outline"
+            size="lg"
+            className="min-w-44"
+            onClick={loadMore}
+            disabled={pending}
+          >
             {pending ? 'Loading…' : 'Load more'}
           </Button>
         </div>

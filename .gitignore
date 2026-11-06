@@ -5,6 +5,7 @@ SPEC.md
 plan.md
 todo.md
 tasks/
+.impeccable/
 
 # dependencies
 /node_modules
@@ -38,3 +39,6 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude
+CLAUDE.md

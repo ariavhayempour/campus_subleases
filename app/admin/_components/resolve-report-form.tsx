@@ -28,7 +28,7 @@ export function ResolveReportForm({ reportId }: { reportId: string }) {
   const noteError = failure?.fieldErrors?.note?.[0];
 
   return (
-    <form onSubmit={submit} className="space-y-2">
+    <form onSubmit={submit} className="max-w-xl space-y-2.5">
       <Label htmlFor="resolution-note">Resolution note</Label>
       <textarea
         id="resolution-note"
@@ -39,10 +39,10 @@ export function ResolveReportForm({ reportId }: { reportId: string }) {
         onChange={(event) => setNote(event.target.value)}
         aria-invalid={noteError ? true : undefined}
         aria-describedby={noteError ? 'resolution-note-error' : undefined}
-        className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm"
+        className="w-full rounded-md border border-line-2 bg-background px-3 py-2.5 text-sm text-ink hover:border-ink-3 focus-visible:border-school focus-visible:ring-3 focus-visible:ring-school/20 focus-visible:outline-none"
       />
       {noteError && (
-        <p id="resolution-note-error" className="text-sm text-destructive">
+        <p id="resolution-note-error" className="text-sm text-bad">
           {noteError}
         </p>
       )}
@@ -50,7 +50,7 @@ export function ResolveReportForm({ reportId }: { reportId: string }) {
         Resolve
       </Button>
       {failure && !failure.fieldErrors && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-bad">
           {failure.message}
         </p>
       )}

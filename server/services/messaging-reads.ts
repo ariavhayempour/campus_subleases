@@ -44,6 +44,7 @@ export type ThreadListing = {
   schoolSlug: string;
   coverThumbUrl: string | null;
   address: string;
+  rentCents: number;
   unit: string | null;
   linkable: boolean; // the viewer can open the listing page
 };
@@ -156,6 +157,7 @@ type ThreadListingRow = {
   schoolSlug: string;
   coverPath: string | null;
   address: string;
+  rentCents: number;
 };
 
 export function toThreadListing(
@@ -169,6 +171,7 @@ export function toThreadListing(
     schoolSlug: row.schoolSlug,
     coverThumbUrl: row.coverPath ? photoUrls(row.coverPath).thumb : null,
     address: row.address,
+    rentCents: row.rentCents,
     unit,
     linkable,
   };
@@ -205,6 +208,7 @@ export async function getThread(actor: Actor, conversationId: string): Promise<T
       schoolSlug: schools.slug,
       coverPath: listingPhotos.storagePath,
       address: listings.address,
+      rentCents: listings.rentCents,
       unit: listings.unit,
       ownerId: listings.ownerId,
       isPublic: sql<boolean>`coalesce(${isPublicListing}, false)`,
@@ -233,7 +237,11 @@ export async function getThread(actor: Actor, conversationId: string): Promise<T
     id: conversation.id,
     viewerId: user.userId,
     listing:
-      row.listingId && row.title !== null && row.schoolSlug !== null && row.address !== null
+      row.listingId &&
+      row.title !== null &&
+      row.schoolSlug !== null &&
+      row.address !== null &&
+      row.rentCents !== null
         ? toThreadListing(
             {
               id: row.listingId,
@@ -241,6 +249,7 @@ export async function getThread(actor: Actor, conversationId: string): Promise<T
               schoolSlug: row.schoolSlug,
               coverPath: row.coverPath,
               address: row.address,
+              rentCents: row.rentCents,
             },
             row.unit,
             row.ownerId === user.userId || (row.isPublic && !blocked),
@@ -292,6 +301,7 @@ export async function getConversationStart(
       schoolSlug: schools.slug,
       coverPath: listingPhotos.storagePath,
       address: listings.address,
+      rentCents: listings.rentCents,
       hostId: users.id,
       hostName: users.displayName,
     })

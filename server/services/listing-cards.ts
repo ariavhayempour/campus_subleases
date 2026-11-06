@@ -20,6 +20,8 @@ export type ListingCard = {
   distanceKm: number;
   coverThumbUrl: string | null;
   isFavorited: boolean;
+  // Approved within the last week; drives the NEW tag on cards.
+  isNew: boolean;
 };
 
 type CardRow = Omit<ListingCard, 'coverThumbUrl'> & { coverPath: string | null };
@@ -40,6 +42,7 @@ export const CARD_COLUMNS = {
   location: listings.location,
   distanceKm: sql<number>`ST_Distance(${listings.location}, ${schools.campusLocation}) / 1000`,
   coverPath: listingPhotos.storagePath,
+  isNew: sql<boolean>`coalesce(${listings.reviewedAt} > now() - interval '7 days', false)`,
 };
 
 // Left-join condition for the cover photo (position 0).
@@ -74,5 +77,6 @@ export function toListingCard(row: CardRow): ListingCard {
     distanceKm: row.distanceKm,
     coverThumbUrl: row.coverPath ? photoUrls(row.coverPath).thumb : null,
     isFavorited: row.isFavorited,
+    isNew: row.isNew,
   };
 }

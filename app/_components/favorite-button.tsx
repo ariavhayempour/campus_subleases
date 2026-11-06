@@ -16,7 +16,12 @@ type FavoriteButtonProps = {
 };
 
 const baseClass =
-  'inline-flex h-9 items-center justify-center gap-2 rounded-full bg-background/90 text-sm shadow-sm ring-1 ring-border transition-colors hover:bg-background focus-visible:outline-2 disabled:opacity-60';
+  'inline-flex items-center justify-center gap-2 border border-line-2 text-sm font-semibold text-ink transition-colors disabled:opacity-60';
+const iconClass =
+  'size-9 rounded-full bg-white/95 shadow-[0_1px_4px_rgb(0_0_0/0.18)] hover:bg-white';
+// The labeled variant matches the outline button it sits beside on the listing page.
+const textClass =
+  'h-12 w-full rounded-md bg-background px-5 text-[15px] hover:border-ink-3 hover:bg-surface-2';
 
 export function FavoriteButton({
   listingId,
@@ -29,10 +34,8 @@ export function FavoriteButton({
   const [favorited, setFavorited] = useState(initialFavorited);
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
-  const buttonClass = cn(baseClass, withText ? 'px-4' : 'w-9');
-  const icon = (
-    <Heart aria-hidden className={cn('size-4', favorited && 'fill-rose-500 text-rose-500')} />
-  );
+  const buttonClass = cn(baseClass, withText ? textClass : iconClass);
+  const icon = <Heart aria-hidden className={cn('size-4', favorited && 'fill-bad text-bad')} />;
   const label = favorited ? `Remove “${listingTitle}” from saved` : `Save “${listingTitle}”`;
   const text = withText && <span>{favorited ? 'Saved' : 'Save'}</span>;
 
@@ -63,7 +66,7 @@ export function FavoriteButton({
   return (
     <span
       className={cn(
-        withText ? 'inline-flex flex-col items-start gap-1' : 'relative inline-flex',
+        withText ? 'flex flex-col items-stretch gap-1' : 'relative inline-flex',
         className,
       )}
     >

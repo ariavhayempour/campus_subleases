@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ListingBadge } from '@/app/_components/listing-badge';
+import { ListingBadge, Tag } from '@/app/_components/listing-badge';
 import { LocalTime } from '@/app/_components/local-time';
+import { TermTimelineBar } from '@/app/_components/term-timeline';
 import { orAdminNotFound } from '@/app/_lib/guards';
 import { ACTION_LABELS, summarizeSnapshot } from '@/lib/audit-labels';
-import { formatDateRange, formatMonthYear, formatRent } from '@/lib/format';
+import { formatMonthYear } from '@/lib/format';
 import {
   AMENITY_LABELS,
   GENDER_PREFERENCE_LABELS,
@@ -20,7 +21,22 @@ import {
 } from '@/lib/moderation-options';
 import { getActor } from '@/server/auth/get-actor';
 import { getAdminListing } from '@/server/services/admin-listings';
+import {
+  AdminPageHeader,
+  AdminSection,
+  Dot,
+  Empty,
+  LINK,
+  Row,
+  RowList,
+} from '../../_components/admin-ui';
 import { ReviewActions } from '../../_components/review-actions';
+
+const usd = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
 
 export const metadata: Metadata = { title: 'Admin · Listing' };
 
@@ -31,10 +47,6 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
   const view = await orAdminNotFound(getAdminListing(await getActor(), id));
   const { detail: listing, owner } = view;
 
-  const flags = [
-    view.autoHidden ? 'Auto-hidden' : null,
-    view.farFromCampusKm === null ? null : `Far from campus: ${view.farFromCampusKm.toFixed(1)} km`,
-  ].filter((flag): flag is string => flag !== null);
   const facts = [
     LISTING_TYPE_LABELS[listing.type],
     listing.bedrooms === 0 ? 'Studio' : `${listing.bedrooms} bed`,
@@ -47,85 +59,88 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
     `Prefers: ${GENDER_PREFERENCE_LABELS[listing.genderPreference]}`,
   ];
 
+  const [cover, ...rest] = listing.photos;
+
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <Link href="/admin/listings" className="text-sm underline">
-          Back to listings
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{listing.title}</h1>
+      <AdminPageHeader
+        title={listing.title}
+        back={{ href: '/admin/listings', label: 'Back to listings' }}
+      >
         <div className="flex flex-wrap items-center gap-2">
           {listingBadges(listing).map((badge) => (
             <ListingBadge key={badge.label} badge={badge} />
           ))}
-          {flags.map((flag) => (
-            <span key={flag} className="text-sm text-amber-700 dark:text-amber-300">
-              {flag}
-            </span>
-          ))}
+          {view.autoHidden && <Tag className="bg-bad-bg text-bad">Auto-hidden</Tag>}
+          {view.farFromCampusKm !== null && (
+            <Tag className="bg-warn-bg text-warn">
+              Far from campus: {view.farFromCampusKm.toFixed(1)} km
+            </Tag>
+          )}
         </div>
-      </header>
+      </AdminPageHeader>
 
-      <div className="grid grid-cols-[1fr_20rem] gap-8">
-        <section aria-labelledby="preview-heading" className="min-w-0 space-y-4">
-          <h2 id="preview-heading" className="text-lg font-medium">
+      <div className="grid grid-cols-[minmax(0,1fr)_22rem] gap-10">
+        <section aria-labelledby="preview-heading" className="min-w-0 space-y-6">
+          <h2 id="preview-heading" className="sr-only">
             Preview
           </h2>
-          {listing.photos.length > 0 && (
-            <ul className="grid grid-cols-4 gap-2">
-              {listing.photos.map((photo) => (
-                <li
+          {cover && (
+            <div className="grid grid-cols-4 gap-2">
+              <div className="relative col-span-2 row-span-2 aspect-[4/3] overflow-hidden rounded-md bg-surface-2">
+                <Image src={cover.thumbUrl} alt="" fill sizes="480px" className="object-cover" />
+              </div>
+              {rest.map((photo) => (
+                <div
                   key={photo.id}
-                  className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted"
+                  className="relative aspect-[4/3] overflow-hidden rounded-md bg-surface-2"
                 >
-                  <Image src={photo.thumbUrl} alt="" fill sizes="160px" className="object-cover" />
-                </li>
+                  <Image src={photo.thumbUrl} alt="" fill sizes="240px" className="object-cover" />
+                </div>
               ))}
-            </ul>
+            </div>
           )}
-          <p>
-            {formatRent(listing.rentCents)} ·{' '}
-            {formatDateRange(listing.availableFrom, listing.availableTo)}
-          </p>
-          <p className="text-sm">
-            {listing.address}
-            {listing.unit ? `, Unit ${listing.unit}` : ''}, {listing.city}, {listing.state}{' '}
-            {listing.zip} · {listing.school.name}
-          </p>
-          <ul className="flex flex-wrap gap-2 text-sm">
+          <div className="space-y-1">
+            <p className="flex items-baseline gap-1.5">
+              <span className="numeral text-[2.75rem]">{usd.format(listing.rentCents / 100)}</span>
+              <span className="text-sm font-medium text-ink-2">/ month</span>
+            </p>
+            <p className="text-sm text-ink-2">
+              {listing.address}
+              {listing.unit ? `, Unit ${listing.unit}` : ''}, {listing.city}, {listing.state}{' '}
+              {listing.zip} · {listing.school.name}
+            </p>
+          </div>
+          <TermTimelineBar from={listing.availableFrom} to={listing.availableTo} size="full" />
+          <ul className="flex flex-wrap gap-1.5">
             {facts.map((fact) => (
-              <li key={fact} className="rounded-full border px-3 py-1">
-                {fact}
+              <li key={fact}>
+                <Tag className="bg-surface-2 text-ink ring-1 ring-line-2 ring-inset">{fact}</Tag>
               </li>
             ))}
           </ul>
-          <p className="whitespace-pre-line">{listing.description}</p>
+          <p className="max-w-[70ch] text-[15px] leading-relaxed whitespace-pre-line text-ink">
+            {listing.description}
+          </p>
           {listing.amenities.length > 0 && (
-            <p className="text-sm">
-              Amenities: {listing.amenities.map((amenity) => AMENITY_LABELS[amenity]).join(', ')}
+            <p className="text-sm text-ink-2">
+              <span className="font-semibold text-ink">Amenities:</span>{' '}
+              {listing.amenities.map((amenity) => AMENITY_LABELS[amenity]).join(', ')}
             </p>
           )}
-          {listing.reviewNote && <p className="text-sm">Review note: {listing.reviewNote}</p>}
+          {listing.reviewNote && (
+            <p className="rounded-md bg-bad-bg px-4 py-3 text-sm text-bad">
+              Review note: {listing.reviewNote}
+            </p>
+          )}
         </section>
 
-        <aside className="space-y-8">
-          <section aria-labelledby="owner-heading" className="space-y-1 text-sm">
-            <h2 id="owner-heading" className="text-lg font-medium">
-              Owner
-            </h2>
-            <p>
-              <Link href={`/admin/users/${owner.id}`} prefetch={false} className="underline">
-                {owner.displayName}
-              </Link>
-            </p>
-            <p>Joined {formatMonthYear(owner.joinedAt)}</p>
-            <p>Status: {USER_STATUS_LABELS[owner.status]}</p>
-            <p>
-              {owner.listingCount} listing{owner.listingCount === 1 ? '' : 's'}
-            </p>
-          </section>
-          <section aria-labelledby="actions-heading" className="space-y-3">
-            <h2 id="actions-heading" className="text-lg font-medium">
+        <aside className="sticky top-6 space-y-6 self-start">
+          <section
+            aria-labelledby="actions-heading"
+            className="space-y-4 rounded-md border border-line-2 p-5 shadow-[0_6px_24px_rgb(21_23_28/0.07)]"
+          >
+            <h2 id="actions-heading" className="varsity text-[1.375rem] font-extrabold">
               Actions
             </h2>
             <ReviewActions
@@ -135,47 +150,65 @@ export default async function AdminListingPage({ params }: AdminListingPageProps
               autoHidden={view.autoHidden}
             />
           </section>
+          <section aria-labelledby="owner-heading" className="space-y-1.5 text-sm">
+            <h2 id="owner-heading" className="varsity text-[1.375rem] font-extrabold">
+              Owner
+            </h2>
+            <p>
+              <Link href={`/admin/users/${owner.id}`} prefetch={false} className={LINK}>
+                {owner.displayName}
+              </Link>
+            </p>
+            <p className="text-ink-2">
+              Joined {formatMonthYear(owner.joinedAt)} · {USER_STATUS_LABELS[owner.status]} ·{' '}
+              {owner.listingCount} listing{owner.listingCount === 1 ? '' : 's'}
+            </p>
+          </section>
         </aside>
       </div>
 
-      <section aria-labelledby="reports-heading" className="space-y-3">
-        <h2 id="reports-heading" className="text-lg font-medium">
-          Reports
-        </h2>
+      <AdminSection id="reports" title="Reports">
         {view.reports.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing here.</p>
+          <Empty />
         ) : (
-          <ul className="space-y-1 text-sm">
+          <RowList>
             {view.reports.map((report) => (
-              <li key={report.id}>
-                <Link href={`/admin/reports/${report.id}`} prefetch={false} className="underline">
+              <Row key={report.id}>
+                <Link href={`/admin/reports/${report.id}`} prefetch={false} className={LINK}>
                   {REPORT_REASON_LABELS[report.reason]}
-                </Link>{' '}
-                · <LocalTime iso={report.createdAt.toISOString()} /> ·{' '}
-                {report.reporterName ?? 'Deleted user'} · {REPORT_STATUS_LABELS[report.status]}
-              </li>
+                </Link>
+                <Dot />
+                <LocalTime iso={report.createdAt.toISOString()} className="text-ink-2" />
+                <Dot />
+                <span>{report.reporterName ?? 'Deleted user'}</span>
+                <Dot />
+                <span className="text-ink-2">{REPORT_STATUS_LABELS[report.status]}</span>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </section>
+      </AdminSection>
 
-      <section aria-labelledby="history-heading" className="space-y-3">
-        <h2 id="history-heading" className="text-lg font-medium">
-          History
-        </h2>
-        <ul className="space-y-1 text-sm">
-          <li>
-            <LocalTime iso={listing.createdAt.toISOString()} /> · Created
-          </li>
+      <AdminSection id="history" title="History">
+        <RowList>
+          <Row>
+            <LocalTime iso={listing.createdAt.toISOString()} className="text-ink-2" />
+            <Dot />
+            <span>Created</span>
+          </Row>
           {view.history.map((entry) => (
-            <li key={entry.id}>
-              <LocalTime iso={entry.createdAt.toISOString()} /> · {ACTION_LABELS[entry.action]} by{' '}
-              {auditActorLabel(entry)}
-              {entry.snapshot ? ` (${summarizeSnapshot(entry.snapshot)})` : ''}
-            </li>
+            <Row key={entry.id}>
+              <LocalTime iso={entry.createdAt.toISOString()} className="text-ink-2" />
+              <Dot />
+              <span>
+                <span className="font-semibold">{ACTION_LABELS[entry.action]}</span> by{' '}
+                {auditActorLabel(entry)}
+                {entry.snapshot ? ` (${summarizeSnapshot(entry.snapshot)})` : ''}
+              </span>
+            </Row>
           ))}
-        </ul>
-      </section>
+        </RowList>
+      </AdminSection>
     </div>
   );
 }

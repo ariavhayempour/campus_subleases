@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
+import { Tag } from '@/app/_components/listing-badge';
 import { LocalTime } from '@/app/_components/local-time';
 import { orAdminNotFound } from '@/app/_lib/guards';
 import { getActor } from '@/server/auth/get-actor';
 import { listAdminListings } from '@/server/services/admin-listings';
 import { listActiveSchools } from '@/server/services/schools';
+import { AdminPageHeader, Empty, LINK, SchoolLabel, TABLE, TD, TH } from '../_components/admin-ui';
 import { ListingTabs, TABS } from '../_components/listing-tabs';
 import { SchoolFilter } from '../_components/school-filter';
 
@@ -20,65 +23,86 @@ export default async function AdminListingsPage({ searchParams }: PageProps<'/ad
     listActiveSchools(),
   ]);
 
+  const colors = new Map(schools.map((s) => [s.slug, s.theme.primary]));
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Listings</h1>
-      <div className="flex items-end justify-between gap-4">
+      <AdminPageHeader
+        title="Listings"
+        actions={<SchoolFilter tab={tab} school={school} schools={schools} />}
+      />
+      <div className="-mt-2 border-b border-line">
         <ListingTabs tab={tab} school={school} />
-        <SchoolFilter tab={tab} school={school} schools={schools} />
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing here.</p>
+        <Empty />
       ) : (
-        <table className="w-full text-left text-sm">
-          <thead className="border-b text-muted-foreground">
+        <table className={TABLE}>
+          <thead>
             <tr>
-              <th className="py-2 pr-4 font-medium">Title</th>
-              <th className="py-2 pr-4 font-medium">School</th>
-              <th className="py-2 pr-4 font-medium">Owner</th>
-              <th className="py-2 pr-4 font-medium">
-                {tab === 'pending' ? 'Submitted' : 'Updated'}
-              </th>
-              <th className="py-2 font-medium">Flags</th>
+              <th className={TH}>Title</th>
+              <th className={TH}>School</th>
+              <th className={TH}>Owner</th>
+              <th className={TH}>{tab === 'pending' ? 'Submitted' : 'Updated'}</th>
+              <th className={TH}>Flags</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
               const flags = [
-                row.autoHidden ? 'Auto-hidden' : null,
+                row.autoHidden ? { label: 'Auto-hidden', tone: 'bg-bad-bg text-bad' } : null,
                 row.farFromCampusKm === null
                   ? null
-                  : `Far from campus: ${row.farFromCampusKm.toFixed(1)} km`,
+                  : {
+                      label: `Far from campus: ${row.farFromCampusKm.toFixed(1)} km`,
+                      tone: 'bg-warn-bg text-warn',
+                    },
                 row.openReports > 0
-                  ? `${row.openReports} open report${row.openReports === 1 ? '' : 's'}`
+                  ? {
+                      label: `${row.openReports} open report${row.openReports === 1 ? '' : 's'}`,
+                      tone: 'bg-ink text-white',
+                    }
                   : null,
-              ].filter((flag): flag is string => flag !== null);
+              ].filter((flag) => flag !== null);
               const when = tab === 'pending' ? row.createdAt : row.updatedAt;
               return (
-                <tr key={row.id} className="border-b align-top">
-                  <td className="py-2 pr-4">
-                    <Link href={`/admin/listings/${row.id}`} className="underline">
-                      {row.title}
-                    </Link>
+                <tr key={row.id} className="hover:bg-surface-2">
+                  <td className={TD}>
+                    <div className="flex items-center gap-3">
+                      <span className="relative aspect-[4/3] w-16 shrink-0 overflow-hidden rounded-[4px] bg-surface-2">
+                        {row.coverThumbUrl && (
+                          <Image
+                            src={row.coverThumbUrl}
+                            alt=""
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                          />
+                        )}
+                      </span>
+                      <Link href={`/admin/listings/${row.id}`} className={LINK}>
+                        {row.title}
+                      </Link>
+                    </div>
                   </td>
-                  <td className="py-2 pr-4">{row.schoolName}</td>
-                  <td className="py-2 pr-4">
-                    <Link
-                      href={`/admin/users/${row.ownerId}`}
-                      prefetch={false}
-                      className="underline"
-                    >
+                  <td className={TD}>
+                    <SchoolLabel name={row.schoolName} color={colors.get(row.schoolSlug)} />
+                  </td>
+                  <td className={TD}>
+                    <Link href={`/admin/users/${row.ownerId}`} prefetch={false} className={LINK}>
                       {row.ownerName}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4 whitespace-nowrap">
+                  <td className={`${TD} whitespace-nowrap text-ink-2`}>
                     <LocalTime iso={when.toISOString()} />
                   </td>
-                  <td className="py-2">
+                  <td className={TD}>
                     {flags.length > 0 && (
-                      <ul className="space-y-0.5">
+                      <ul className="flex flex-wrap gap-1.5">
                         {flags.map((flag) => (
-                          <li key={flag}>{flag}</li>
+                          <li key={flag.label}>
+                            <Tag className={flag.tone}>{flag.label}</Tag>
+                          </li>
                         ))}
                       </ul>
                     )}

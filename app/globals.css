@@ -8,9 +8,32 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-archivo);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-big-shoulders);
+  --font-display: var(--font-big-shoulders);
+  --color-school: var(--school);
+  --color-school-deep: var(--school-deep);
+  --color-on-school: var(--on-school);
+  --color-school-secondary: var(--school-secondary);
+  --color-on-school-secondary: var(--on-school-secondary);
+  --color-highlight: var(--school-highlight);
+  --color-on-highlight: var(--on-school-highlight);
+  --color-school-tint: var(--school-tint);
+  --color-school-link: var(--school-link);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-surface-2: var(--surface-2);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,38 +73,62 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* School colors; the root layout overrides these per school (see lib/school-theme.ts). */
+  --school: #15171c;
+  --school-deep: #000000;
+  --on-school: #ffffff;
+  --school-secondary: #ffffff;
+  --on-school-secondary: #15171c;
+  --school-highlight: #ffffff;
+  --on-school-highlight: #15171c;
+  --school-tint: #f1f2f4;
+  --school-link: #15171c;
+
+  --ink: #15171c;
+  --ink-2: #444a55;
+  --ink-3: #626977;
+  --line: #e2e4e8;
+  --line-2: #cdd1d7;
+  --surface-2: #f5f6f8;
+  --ok: #1d6b3a;
+  --ok-bg: #e6f2ea;
+  --warn: #8a5a00;
+  --warn-bg: #fff4d6;
+  --bad: #a4161a;
+  --bad-bg: #fbe9e9;
+
+  --background: #ffffff;
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--school);
+  --primary-foreground: var(--on-school);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--ink-2);
+  --accent: var(--school-tint);
+  --accent-foreground: var(--ink);
+  --destructive: var(--bad);
+  --border: var(--line);
+  --input: var(--line-2);
+  --ring: var(--school);
+  --chart-1: var(--school);
+  --chart-2: var(--school-highlight);
+  --chart-3: var(--ink-3);
+  --chart-4: var(--line-2);
+  --chart-5: var(--ink);
+  --radius: 0.375rem;
+  --sidebar: var(--surface-2);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--school);
+  --sidebar-primary-foreground: var(--on-school);
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--school);
 }
 
 .dark {
@@ -122,10 +169,64 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    scrollbar-color: var(--line-2) transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  ::selection {
+    background: var(--school);
+    color: var(--on-school);
+  }
+  :focus-visible {
+    outline: 3px solid var(--school);
+    outline-offset: 2px;
+  }
+  .on-school :focus-visible {
+    outline-color: var(--school-secondary);
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* Condensed block caps: headings, the school band, block-letter tags. */
+  .varsity {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 0.92;
+  }
+  /* Jersey-style numerals for rent and counts. */
+  .numeral {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums lining-nums;
+    line-height: 0.95;
+  }
+  /* The one recurring motif: a double rule in the school's second color. */
+  .varsity-stripe {
+    height: 13px;
+    border-top: 4px solid var(--school-secondary);
+    border-bottom: 4px solid var(--school-secondary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
   }
 }

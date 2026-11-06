@@ -46,10 +46,15 @@ export function ReviewActions({
   const fieldError = (name: string): string | undefined => failure?.fieldErrors?.[name]?.[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {reviewStatus === 'pending' && (
-        <div className="space-y-4">
-          <Button disabled={pending} onClick={() => run(() => approveAction(listingId, version))}>
+        <div className="space-y-5">
+          <Button
+            size="lg"
+            disabled={pending}
+            className="w-full bg-ok text-white hover:bg-ok/90"
+            onClick={() => run(() => approveAction(listingId, version))}
+          >
             Approve
           </Button>
           <div className="space-y-2">
@@ -62,16 +67,17 @@ export function ReviewActions({
               onChange={(event) => setNote(event.target.value)}
               aria-invalid={fieldError('note') ? true : undefined}
               aria-describedby={fieldError('note') ? 'reject-note-error' : undefined}
-              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm"
+              className="w-full rounded-md border border-line-2 bg-background px-3 py-2.5 text-sm text-ink hover:border-ink-3 focus-visible:border-school focus-visible:ring-3 focus-visible:ring-school/20 focus-visible:outline-none"
             />
             {fieldError('note') && (
-              <p id="reject-note-error" className="text-sm text-destructive">
+              <p id="reject-note-error" className="text-sm text-bad">
                 {fieldError('note')}
               </p>
             )}
             <Button
               variant="outline"
               disabled={pending}
+              className="w-full"
               onClick={() => run(() => rejectAction(listingId, version, note))}
             >
               Reject
@@ -83,6 +89,7 @@ export function ReviewActions({
         <Button
           variant="outline"
           disabled={pending}
+          className="w-full"
           onClick={() => run(() => hideAction(listingId))}
         >
           {autoHidden ? 'Keep hidden' : 'Hide'}
@@ -92,12 +99,13 @@ export function ReviewActions({
         <Button
           variant="outline"
           disabled={pending}
+          className="w-full"
           onClick={() => run(() => unhideAction(listingId))}
         >
           Unhide
         </Button>
       )}
-      <div className="space-y-2 border-t pt-4">
+      <div className="space-y-2 border-t border-line pt-5">
         <Label htmlFor="delete-confirm">Type {CONFIRM_WORD} to confirm</Label>
         <Input
           id="delete-confirm"
@@ -109,20 +117,21 @@ export function ReviewActions({
           aria-describedby={fieldError('confirm') ? 'delete-confirm-error' : undefined}
         />
         {fieldError('confirm') && (
-          <p id="delete-confirm-error" className="text-sm text-destructive">
+          <p id="delete-confirm-error" className="text-sm text-bad">
             {fieldError('confirm')}
           </p>
         )}
         <Button
           variant="destructive"
           disabled={pending}
+          className="w-full bg-bad-bg text-bad hover:bg-bad hover:text-white"
           onClick={() => run(() => deleteListingAction(listingId, confirm))}
         >
           Delete listing
         </Button>
       </div>
       {failure && !failure.fieldErrors && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-bad">
           {failure.message}
           {failure.code === 'Conflict' && (
             <>

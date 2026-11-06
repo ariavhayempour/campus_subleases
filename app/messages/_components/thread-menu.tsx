@@ -1,5 +1,6 @@
 'use client';
 
+import { Ban, Flag, MoreHorizontal, UserCheck } from 'lucide-react';
 import { useRef, useState, useTransition } from 'react';
 import { ReportDialog } from '@/app/_components/report-dialog';
 import { blockUserAction, unblockUserAction } from '../actions';
@@ -34,18 +35,23 @@ export function ThreadMenu({ otherUserId, otherName, blocked }: ThreadMenuProps)
       <details ref={menu} className="relative">
         <summary
           ref={summary}
-          className="cursor-pointer list-none rounded-md px-2 py-1 text-sm hover:bg-muted"
+          className="grid size-9 cursor-pointer list-none place-items-center rounded-md text-ink hover:bg-surface-2 [&::-webkit-details-marker]:hidden"
         >
           <span className="sr-only">Conversation options</span>
-          <span aria-hidden>⋯</span>
+          <MoreHorizontal aria-hidden="true" className="size-5" />
         </summary>
-        <div className="absolute right-0 z-10 mt-1 w-40 rounded-md bg-background p-1 shadow-md ring-1 ring-border">
+        <div className="absolute right-0 z-20 mt-1.5 w-52 rounded-md bg-background p-1.5 shadow-[0_8px_28px_rgb(0_0_0/0.18)] ring-1 ring-line">
           <button
             type="button"
             onClick={run}
             disabled={pending}
-            className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-60"
+            className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left text-sm text-bad hover:bg-surface-2 disabled:opacity-60"
           >
+            {blocked ? (
+              <UserCheck aria-hidden="true" className="size-4" />
+            ) : (
+              <Ban aria-hidden="true" className="size-4" />
+            )}
             {blocked ? 'Unblock' : 'Block user'}
           </button>
           <button
@@ -54,12 +60,13 @@ export function ThreadMenu({ otherUserId, otherName, blocked }: ThreadMenuProps)
               menu.current?.removeAttribute('open');
               setReporting(true);
             }}
-            className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+            className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left text-sm text-ink hover:bg-surface-2"
           >
+            <Flag aria-hidden="true" className="size-4" />
             Report user
           </button>
           {failed && (
-            <p role="alert" className="px-2 py-1 text-xs text-destructive">
+            <p role="alert" className="px-2.5 py-1 text-xs text-bad">
               Something went wrong. Try again.
             </p>
           )}

@@ -31,7 +31,7 @@ You need Node 22+, pnpm, and Docker (for the local Supabase stack via the Supaba
 
 ```bash
 pnpm install
-cp .env.example .env.local   # then fill in the values; see docs/claude/environment.md
+cp .env.example .env.local   # then fill in the values; see docs/environment.md
 pnpm db:start                # local Supabase (Postgres, Storage, Realtime) and storage buckets
 pnpm db:migrate              # apply migrations
 pnpm dev                     # http://localhost:3000
@@ -73,17 +73,18 @@ The browser never queries Postgres directly; all data access is server-side thro
 
 ## Documentation
 
-Architecture and technical documentation live in [`docs/claude/`](docs/claude/). Start with
-[`architecture.md`](docs/claude/architecture.md), then:
+Architecture and technical documentation live in [`docs/`](docs/). Start with
+[`architecture.md`](docs/architecture.md), then:
 
-- [`listings.md`](docs/claude/listings.md), [`search.md`](docs/claude/search.md),
-  [`messaging.md`](docs/claude/messaging.md), [`moderation.md`](docs/claude/moderation.md),
-  [`admin.md`](docs/claude/admin.md), [`site-pages.md`](docs/claude/site-pages.md)
-- [`database.md`](docs/claude/database.md), [`services.md`](docs/claude/services.md),
-  [`auth.md`](docs/claude/auth.md), [`storage.md`](docs/claude/storage.md)
-- [`environment.md`](docs/claude/environment.md) (variables, CI, secrets),
-  [`testing.md`](docs/claude/testing.md),
-  [`launch-checklist.md`](docs/claude/launch-checklist.md)
+- [`listings.md`](docs/listings.md), [`search.md`](docs/search.md),
+  [`messaging.md`](docs/messaging.md), [`moderation.md`](docs/moderation.md),
+  [`admin.md`](docs/admin.md), [`site-pages.md`](docs/site-pages.md),
+  [`design-system.md`](docs/design-system.md) (school colors, tokens, shared UI)
+- [`database.md`](docs/database.md), [`services.md`](docs/services.md),
+  [`auth.md`](docs/auth.md), [`storage.md`](docs/storage.md)
+- [`environment.md`](docs/environment.md) (variables, CI, secrets),
+  [`testing.md`](docs/testing.md),
+  [`launch-checklist.md`](docs/launch-checklist.md)
 
 Design specs and implementation plans are local-only planning artifacts (`docs/superpowers/`,
 `.superpowers/`, `tasks/`, `SPEC.md`, `plan.md`, `todo.md`). They are gitignored and never pushed.

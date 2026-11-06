@@ -1,9 +1,10 @@
 import { SignIn } from '@clerk/nextjs';
+import { AuthShell } from '@/app/_components/auth-shell';
 
 export default function SignInPage() {
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-12">
+    <AuthShell heading="Welcome back.">
       <SignIn />
-    </div>
+    </AuthShell>
   );
 }

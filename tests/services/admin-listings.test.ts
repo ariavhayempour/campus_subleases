@@ -148,7 +148,11 @@ describe('admin listing services', () => {
         status: 'active',
         autoHidden: false,
         openReports: 1,
+        coverThumbUrl: null,
       });
+      await insertPhoto(newer.id, 0);
+      const withCover = await listAdminListings(adminActor, { school: school.slug });
+      expect(withCover.find((r) => r.id === newer.id)?.coverThumbUrl).toMatch(/-thumb\.webp$/);
       const all = await listAdminListings(adminActor, {});
       expect(await listAdminListings(adminActor, { school: '  ' })).toHaveLength(all.length);
       expect(await listAdminListings(adminActor, { school: '' })).toHaveLength(all.length);

@@ -158,6 +158,7 @@ describe('getThread', () => {
       expect(renterView.messages.map((m) => m.id)).toEqual([first.id, second.id]);
       expect(renterView).toMatchObject({ viewerId: renter.id, composer: 'open' });
       expect(renterView.listing?.unit).toBe('4B');
+      expect(renterView.listing?.rentCents).toBe(listing.rentCents);
       expect(renterView.otherUser).toEqual({ id: owner.id, displayName: owner.displayName });
       const hostView = await getThread(actorFor(owner.id), conversation.id);
       expect(hostView.listing?.unit).toBe('4B');

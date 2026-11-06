@@ -11,7 +11,8 @@ Public static pages, the site footer, the contact form, and `robots.txt` / `site
 | `/privacy` | `app/privacy/page.tsx` | Privacy Policy; dated "Last updated"             |
 | `/contact` | `app/contact/page.tsx` | Web3Forms contact form (`contact-form.tsx`)      |
 
-All four are static, public, and indexable. They share `app/_components/static-page.tsx` (title,
+All four are public and indexable. They render per request, because the root layout reads the
+request path to pick the school colors (see `design-system.md`). They share `app/_components/static-page.tsx` (title,
 optional "Last updated" line, and prose styling for `h2`, `p`, `ul`, `a`). The slugs are already
 in `lib/reserved-slugs.ts`, so no school can take them.
 
@@ -38,7 +39,7 @@ bottom with `mt-auto` (the body is a flex column). It links the four pages and s
 free, student-only, and not affiliated with any university.
 
 It renders nothing on `/messages` and `/messages/*`: that screen is sized to exactly the viewport
-below the header (`h-[calc(100dvh-3.5rem)]`), so a footer would make the whole page scroll. That is
+below the header and its stripe (`h-[calc(100dvh-4.5rem)]`), so a footer would make the whole page scroll. That is
 why the footer is a client component (`usePathname`).
 
 ## Contact form (Web3Forms)

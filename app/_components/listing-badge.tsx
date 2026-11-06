@@ -2,18 +2,26 @@ import type { ListingBadge as Badge } from '@/lib/listing-rules';
 import { cn } from '@/lib/utils';
 
 const TONES: Record<Badge['tone'], string> = {
-  neutral: 'bg-muted text-muted-foreground',
-  warning: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100',
-  danger: 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-100',
-  success: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100',
+  neutral: 'bg-surface-2 text-ink-2 ring-1 ring-line-2 ring-inset',
+  warning: 'bg-warn-bg text-warn',
+  danger: 'bg-bad-bg text-bad',
+  success: 'bg-ok-bg text-ok',
 };
 
 export function ListingBadge({ badge }: { badge: Badge }) {
+  return <Tag className={TONES[badge.tone]}>{badge.label}</Tag>;
+}
+
+// Block-letter tag; long text (a rejection reason) wraps instead of truncating.
+export function Tag({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <span
-      className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', TONES[badge.tone])}
+      className={cn(
+        'varsity inline-flex min-h-[22px] items-center rounded-[2px] px-[7px] py-[3px] text-xs leading-tight font-bold tracking-[0.06em]',
+        className,
+      )}
     >
-      {badge.label}
+      {children}
     </span>
   );
 }
