@@ -30,6 +30,8 @@ export function HeaderStripe() {
   const pathname = usePathname();
   const school = useThemeSchool();
   if (school && pathname === `/${school.slug}`) return null;
+  // The signed-out landing hero is ink too, so the header runs straight into it.
+  if (!school && pathname === '/') return null;
   // On neutral pages the secondary color is white, so this reads as a plain ink-and-white rule.
   return <div aria-hidden="true" className="varsity-stripe h-2 border-b-0" />;
 }

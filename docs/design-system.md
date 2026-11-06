@@ -33,7 +33,8 @@ Adding a school = one custom migration with the `INSERT` plus its branding value
 `resolveThemeSchool()` (`lib/theme-school.ts`, tested in `tests/lib/theme-school.test.ts`):
 
 1. A route whose first segment is a school slug (`/umich`, `/umich/listings/…`) wears that school.
-2. `/admin/**` and the school picker `/` stay neutral (ink).
+2. `/admin/**` and the landing page `/` stay neutral (ink); the landing page dresses each block of
+   its school ribbon in that school's colors with `schoolThemeStyle`.
 3. Anything else wears the signed-in viewer's home school; visitors without one get neutral.
 
 The colors reach CSS as custom properties (`--school`, `--on-school`, `--school-secondary`,

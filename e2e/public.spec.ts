@@ -1,9 +1,18 @@
 import { expect, test } from '@playwright/test';
 
-test('a visitor picks a school and sees its page', async ({ page }) => {
+test('a visitor lands on the home page and browses a school', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // Holds the school ribbon still.
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Find a sublease near campus' })).toBeVisible();
-  await page.getByRole('link', { name: 'University of Michigan' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Sublet near campus, student to student.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Create your free account' }).first(),
+  ).toHaveAttribute('href', '/sign-up');
+  await page
+    .getByRole('navigation', { name: /Browse any school now/ })
+    .getByRole('link', { name: /University of Michigan/ })
+    .click();
   await expect(page).toHaveURL('/umich');
   await expect(
     page.getByRole('heading', { name: 'Subleases near University of Michigan' }),
