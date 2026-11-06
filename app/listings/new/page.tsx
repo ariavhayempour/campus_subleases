@@ -15,19 +15,19 @@ export default async function NewListingPage() {
   const actor = await requireOnboardedUser();
   const { schools, homeSchoolId, atCap } = await getListingFormContext(actor);
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Post a listing</h1>
+    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <h1 className="varsity text-[clamp(2.75rem,6vw,4rem)] font-black text-ink">Post a listing</h1>
       {atCap ? (
-        <p className="mt-6 text-muted-foreground">
+        <p className="mt-6 max-w-[60ch] rounded-md bg-surface-2 p-5 text-[16px] text-ink-2">
           You already have {MAX_ACTIVE_LISTINGS} active listings. Mark one as taken or remove it in{' '}
-          <Link href="/me/listings" className="underline">
+          <Link href="/me/listings" className="font-semibold text-school-link underline">
             My listings
           </Link>{' '}
           to post another.
         </p>
       ) : (
         <>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-3 text-[16px] text-ink-2">
             Every listing is reviewed before it appears, usually within 24 hours.
           </p>
           <div className="mt-8">
@@ -35,6 +35,7 @@ export default async function NewListingPage() {
               schools={schools}
               initialPhotos={[]}
               submitLabel="Submit for review"
+              submitNote="Every listing is reviewed before it appears, usually within 24 hours."
               submitAction={createListingAction}
               defaultValues={{
                 schoolId: homeSchoolId ?? '',

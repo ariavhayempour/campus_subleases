@@ -87,7 +87,7 @@ export function AddressField({ inputProps, invalid, errorId, onTyped, onPick }: 
       ) : (
         <>
           {input}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-2">
             Address search is unavailable: the Mapbox token is not configured.
           </p>
         </>

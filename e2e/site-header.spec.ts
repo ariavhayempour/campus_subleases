@@ -15,7 +15,7 @@ test('signed-in header fits a phone and collapses links into a menu', async ({ p
 
   const header = page.getByRole('banner');
   await expect(header.getByRole('link', { name: /^Messages/ })).toBeVisible();
-  await expect(header.locator('.cl-userButtonTrigger')).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Account menu' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 
   await header.getByText('Menu', { exact: true }).click();

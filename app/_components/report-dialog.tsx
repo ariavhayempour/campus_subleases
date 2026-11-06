@@ -42,7 +42,7 @@ export function ReportDialog({ open, onClose, targetType, targetId, title }: Rep
         if (busy.current) event.preventDefault();
       }}
       aria-labelledby="report-dialog-title"
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg bg-background p-5 text-foreground shadow-lg ring-1 ring-border backdrop:bg-black/40"
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-md bg-background p-6 text-ink shadow-[0_20px_60px_rgb(0_0_0/0.3)] ring-1 ring-line backdrop:bg-ink/60"
     >
       {open && (
         <ReportForm
@@ -106,12 +106,14 @@ function ReportForm({ title, targetType, targetId, onClose, onBusy }: ReportForm
 
   return (
     <div>
-      <h2 id="report-dialog-title" className="text-lg font-semibold">
+      <h2 id="report-dialog-title" className="varsity text-[1.75rem] font-extrabold">
         {title}
       </h2>
       {sent ? (
         <div className="mt-4 space-y-4">
-          <p role="status">{REPORT_SENT}</p>
+          <p role="status" className="rounded-md bg-ok-bg px-4 py-3 text-sm font-medium text-ok">
+            {REPORT_SENT}
+          </p>
           <div className="flex justify-end">
             <Button type="button" onClick={onClose}>
               Close
@@ -119,21 +121,27 @@ function ReportForm({ title, targetType, targetId, onClose, onBusy }: ReportForm
           </div>
         </div>
       ) : (
-        <form onSubmit={submit} className="mt-4 space-y-4">
+        <form onSubmit={submit} className="mt-5 space-y-5">
           <fieldset
             role="radiogroup"
             aria-invalid={fieldErrors.reason ? true : undefined}
             className="space-y-2"
             aria-describedby={fieldErrors.reason ? `${id}-reason-error` : undefined}
           >
-            <legend className="text-sm font-medium">Why are you reporting this?</legend>
+            <legend className="mb-1 text-[13px] font-semibold text-ink">
+              Why are you reporting this?
+            </legend>
             {REPORT_REASONS.map((value, index) => (
-              <label key={value} className="flex items-center gap-2 text-sm">
+              <label
+                key={value}
+                className="flex cursor-pointer items-center gap-3 rounded-md border border-line-2 px-3 py-2.5 text-sm text-ink hover:border-ink-3 has-checked:border-school has-checked:bg-school-tint"
+              >
                 <input
                   type="radio"
                   ref={index === 0 ? firstRadio : undefined}
                   name="reason"
                   value={value}
+                  className="size-4 accent-school"
                   checked={reason === value}
                   onChange={() => setReason(value)}
                 />
@@ -142,8 +150,8 @@ function ReportForm({ title, targetType, targetId, onClose, onBusy }: ReportForm
             ))}
             <FieldError id={`${id}-reason-error`} message={fieldErrors.reason} />
           </fieldset>
-          <div className="space-y-1">
-            <label htmlFor={`${id}-details`} className="text-sm font-medium">
+          <div className="space-y-1.5">
+            <label htmlFor={`${id}-details`} className="text-[13px] font-semibold text-ink">
               Anything else we should know?
             </label>
             <textarea
@@ -155,17 +163,17 @@ function ReportForm({ title, targetType, targetId, onClose, onBusy }: ReportForm
               onChange={(event) => setDetails(event.target.value)}
               aria-invalid={fieldErrors.details ? true : undefined}
               aria-describedby={fieldErrors.details ? `${id}-details-error` : undefined}
-              className="w-full rounded-lg border bg-background px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="w-full rounded-md border border-line-2 bg-background px-3 py-2 text-sm text-ink outline-none hover:border-ink-3 focus-visible:border-school focus-visible:ring-3 focus-visible:ring-school/20"
             />
             <FieldError id={`${id}-details-error`} message={fieldErrors.details} />
           </div>
           {formError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="rounded-md bg-bad-bg px-3 py-2 text-sm font-medium text-bad">
               {formError}
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>

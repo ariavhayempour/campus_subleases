@@ -13,7 +13,7 @@ export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
   const [pending, startTransition] = useTransition();
 
   if (users.length === 0) {
-    return <p className="text-sm text-muted-foreground">You haven&apos;t blocked anyone.</p>;
+    return <p className="text-sm text-ink-2">You haven&apos;t blocked anyone.</p>;
   }
 
   function unblock(userId: string) {
@@ -28,12 +28,12 @@ export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
 
   return (
     <div>
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y divide-line rounded-md border border-line">
         {users.map((user) => (
           <li key={user.id} className="flex items-center justify-between gap-3 p-3 text-sm">
             <div>
-              <p className="font-medium">{user.displayName}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="font-semibold text-ink">{user.displayName}</p>
+              <p className="text-xs text-ink-2">
                 Blocked <LocalTime iso={user.blockedAt} dateOnly />
               </p>
             </div>
@@ -50,7 +50,7 @@ export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
         ))}
       </ul>
       {failed && (
-        <p role="alert" className="mt-2 text-sm text-destructive">
+        <p role="alert" className="mt-2 text-sm font-medium text-bad">
           Something went wrong. Try again.
         </p>
       )}

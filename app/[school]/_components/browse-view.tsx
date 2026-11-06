@@ -1,5 +1,6 @@
 'use client';
 
+import { List, Map as MapIcon, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { useMediaQuery } from '@/app/_lib/use-media-query';
@@ -12,7 +13,14 @@ import { BrowseMap } from './browse-map';
 import { BrowseResults } from './browse-results';
 
 type BrowseViewProps = {
-  school: { id: string; slug: string; campus: LngLat; zoom: number };
+  school: {
+    id: string;
+    slug: string;
+    campus: LngLat;
+    campusName: string;
+    zoom: number;
+    timelineStart: string;
+  };
   filters: SearchFilters;
   query: string;
   results: SearchPage;
@@ -55,11 +63,21 @@ export function BrowseView({
 
   return (
     <div className="mt-4">
-      <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+      <div
+        className={cn(
+          'mb-4 flex flex-wrap items-center gap-3 text-sm',
+          !filters.bounds && 'md:hidden',
+        )}
+      >
         {filters.bounds && (
-          <p className="flex items-center gap-2 rounded-full border px-3 py-1">
+          <p className="flex items-center gap-2 rounded-full bg-school-tint py-1.5 pr-1.5 pl-3.5 font-medium text-ink">
             Showing listings in the map area
-            <button type="button" className="underline" onClick={clearArea}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-full bg-background px-2.5 py-1 text-[13px] font-semibold text-school-link ring-1 ring-line-2"
+              onClick={clearArea}
+            >
+              <X aria-hidden="true" className="size-3.5" />
               Clear area
             </button>
           </p>
@@ -70,10 +88,11 @@ export function BrowseView({
           className="ml-auto md:hidden"
           onClick={toggleMobileView}
         >
+          {mobileView === 'list' ? <MapIcon aria-hidden="true" /> : <List aria-hidden="true" />}
           {mobileView === 'list' ? 'Show map' : 'Show list'}
         </Button>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-8">
         <div className={cn(mobileView === 'map' && 'hidden md:block')}>
           {results.cards.length === 0 ? (
             empty
@@ -84,13 +103,15 @@ export function BrowseView({
               query={query}
               initial={results}
               signedIn={signedIn}
+              campusName={school.campusName}
+              timelineStart={school.timelineStart}
               onHover={setHoveredId}
             />
           )}
         </div>
         <div
           className={cn(
-            'h-[70dvh] md:sticky md:top-4 md:h-[calc(100dvh-6rem)]',
+            'h-[70dvh] md:sticky md:top-[5.25rem] md:h-[calc(100dvh-6.5rem)]',
             mobileView === 'list' && 'hidden md:block',
           )}
         >
@@ -98,6 +119,7 @@ export function BrowseView({
             <BrowseMap
               schoolSlug={school.slug}
               campus={school.campus}
+              campusName={school.campusName}
               zoom={school.zoom}
               pins={pins}
               bounds={filters.bounds}
@@ -105,7 +127,7 @@ export function BrowseView({
               onSearchArea={(bounds) => navigate({ ...filters, bounds })}
             />
           ) : (
-            <div className="h-full w-full animate-pulse rounded-xl bg-muted" />
+            <div className="h-full w-full animate-pulse rounded-md bg-surface-2" />
           )}
         </div>
       </div>

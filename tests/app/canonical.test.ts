@@ -5,7 +5,8 @@ import { withRollback } from '../helpers/db';
 
 // Page modules import Clerk, next/font, and components that only run inside Next.
 vi.mock('next/font/google', () => ({
-  Geist: () => ({ variable: 'geist-sans' }),
+  Archivo: () => ({ variable: 'archivo' }),
+  Big_Shoulders: () => ({ variable: 'big-shoulders' }),
   Geist_Mono: () => ({ variable: 'geist-mono' }),
 }));
 vi.mock('@clerk/nextjs', () => ({ ClerkProvider: () => null }));
@@ -13,6 +14,7 @@ vi.mock('@clerk/ui/themes', () => ({ shadcn: {} }));
 vi.mock('@/app/_components/messaging-provider', () => ({ MessagingProvider: () => null }));
 vi.mock('@/app/_components/site-header', () => ({ SiteHeader: () => null }));
 vi.mock('@/app/_components/site-footer', () => ({ SiteFooter: () => null }));
+vi.mock('@/app/_components/school-theme', () => ({ SchoolThemeProvider: () => null }));
 vi.mock('@/server/auth/get-actor', () => ({ getActor: vi.fn() }));
 vi.mock('@/app/[school]/_components/browse-filters', () => ({ BrowseFilters: () => null }));
 vi.mock('@/app/[school]/_components/browse-view', () => ({ BrowseView: () => null }));

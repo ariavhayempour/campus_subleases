@@ -1,7 +1,7 @@
 export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="text-sm text-destructive">
+    <p id={id} className="text-sm font-medium text-bad">
       {message}
     </p>
   );

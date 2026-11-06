@@ -13,9 +13,10 @@ test('a new user is sent to onboarding, then to their home school', async ({ pag
   await expect(page).toHaveURL('/onboarding');
 
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByLabel('Home school')).toHaveAttribute('aria-invalid', 'true');
+  const homeSchool = page.getByRole('radiogroup', { name: 'Home school' });
+  await expect(homeSchool).toHaveAttribute('aria-invalid', 'true');
 
-  await page.getByLabel('Home school').selectOption({ label: 'University of Wisconsin–Madison' });
+  await homeSchool.getByRole('radio', { name: /University of Wisconsin–Madison/ }).check();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page).toHaveURL('/uw-madison');
 

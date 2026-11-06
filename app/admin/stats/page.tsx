@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { formatDuration, formatPercent } from '@/lib/format';
 import { getActor } from '@/server/auth/get-actor';
 import { getTrialStats, type SchoolStats } from '@/server/services/admin-stats';
+import { listActiveSchools } from '@/server/services/schools';
 import { ValidationError } from '@/server/services/errors';
+import { AdminPageHeader, SchoolLabel, TABLE, TD, TH } from '../_components/admin-ui';
 
 export const metadata: Metadata = { title: 'Admin · Stats' };
 
@@ -23,7 +25,8 @@ export default async function AdminStatsPage({ searchParams }: PageProps<'/admin
   const defaults = defaultRange();
   const from = typeof params.from === 'string' ? params.from : defaults.from;
   const to = typeof params.to === 'string' ? params.to : defaults.to;
-  const actor = await getActor();
+  const [actor, schools] = await Promise.all([getActor(), listActiveSchools()]);
+  const colors = new Map(schools.map((s) => [s.slug, s.theme.primary]));
 
   let stats: SchoolStats[] | null = null;
   let error: string | null = null;
@@ -36,16 +39,16 @@ export default async function AdminStatsPage({ searchParams }: PageProps<'/admin
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Trial stats</h1>
-      <form method="get" action="/admin/stats" className="flex flex-wrap items-start gap-4">
-        <div className="space-y-1">
-          <label htmlFor="stats-from" className="text-sm">
+      <AdminPageHeader title="Trial stats" />
+      <form method="get" action="/admin/stats" className="flex flex-wrap items-start gap-3">
+        <div className="grid gap-1.5">
+          <label htmlFor="stats-from" className="text-[13px] font-semibold text-ink">
             From
           </label>
           <Input id="stats-from" type="date" name="from" defaultValue={from} className="w-44" />
         </div>
-        <div className="space-y-1">
-          <label htmlFor="stats-to" className="text-sm">
+        <div className="grid gap-1.5">
+          <label htmlFor="stats-to" className="text-[13px] font-semibold text-ink">
             To
           </label>
           <Input
@@ -58,50 +61,70 @@ export default async function AdminStatsPage({ searchParams }: PageProps<'/admin
             aria-describedby={error ? 'stats-to-error' : undefined}
           />
           {error && (
-            <p id="stats-to-error" className="text-sm text-destructive">
+            <p id="stats-to-error" className="text-sm text-bad">
               {error}
             </p>
           )}
         </div>
-        <Button type="submit" variant="outline" size="sm" className="mt-6">
+        <Button type="submit" variant="outline" className="mt-[1.4rem]">
           Apply
         </Button>
       </form>
       {stats && (
         <>
-          <table className="w-full text-left text-sm">
-            <thead className="border-b text-muted-foreground">
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th className="py-2 pr-4 font-medium">School</th>
-                <th className="py-2 pr-4 font-medium">Listings posted</th>
-                <th className="py-2 pr-4 font-medium">Approved listings with a message</th>
-                <th className="py-2 pr-4 font-medium">Median time to host&apos;s first reply</th>
-                <th className="py-2 font-medium">Listings marked taken</th>
+                <th className={TH}>School</th>
+                <th className={`${TH} text-right`}>Listings posted</th>
+                <th className={TH}>Approved listings with a message</th>
+                <th className={TH}>Median time to host&apos;s first reply</th>
+                <th className={`${TH} text-right`}>Listings marked taken</th>
               </tr>
             </thead>
             <tbody>
-              {stats.map((row) => (
-                <tr key={row.schoolSlug} className="border-b align-top">
-                  <td className="py-2 pr-4">{row.schoolName}</td>
-                  <td className="py-2 pr-4">{row.listingsPosted}</td>
-                  <td className="py-2 pr-4">
-                    {row.approvedWithMessage} of {row.approvedListings} (
-                    {formatPercent(row.approvedWithMessage, row.approvedListings)})
-                  </td>
-                  <td className="py-2 pr-4">
-                    {row.medianFirstReplySeconds === null
-                      ? '—'
-                      : formatDuration(row.medianFirstReplySeconds)}{' '}
-                    <span className="text-muted-foreground">
-                      ({row.repliedConversations} replied)
-                    </span>
-                  </td>
-                  <td className="py-2">{row.listingsTaken}</td>
-                </tr>
-              ))}
+              {stats.map((row) => {
+                const color = colors.get(row.schoolSlug);
+                const share =
+                  row.approvedListings === 0 ? 0 : row.approvedWithMessage / row.approvedListings;
+                return (
+                  <tr key={row.schoolSlug} className="[&>td]:align-middle">
+                    <td className={TD}>
+                      <SchoolLabel name={row.schoolName} color={color} />
+                    </td>
+                    <td className={`${TD} numeral text-right text-[1.75rem]`}>
+                      {row.listingsPosted}
+                    </td>
+                    <td className={`${TD} w-[34%]`}>
+                      <p>
+                        {row.approvedWithMessage} of {row.approvedListings} (
+                        {formatPercent(row.approvedWithMessage, row.approvedListings)})
+                      </p>
+                      <div
+                        aria-hidden="true"
+                        className="mt-1.5 h-2.5 overflow-hidden rounded-[1px] bg-line"
+                      >
+                        <i
+                          className="block h-full bg-ink"
+                          style={{ width: `${share * 100}%`, background: color }}
+                        />
+                      </div>
+                    </td>
+                    <td className={TD}>
+                      {row.medianFirstReplySeconds === null
+                        ? '—'
+                        : formatDuration(row.medianFirstReplySeconds)}{' '}
+                      <span className="text-ink-2">({row.repliedConversations} replied)</span>
+                    </td>
+                    <td className={`${TD} numeral text-right text-[1.75rem]`}>
+                      {row.listingsTaken}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-2">
             Computed on request from stored data. Listings approved before the admin dashboard
             existed are not counted as approved.
           </p>

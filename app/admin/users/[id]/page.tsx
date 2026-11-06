@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { ListingBadge } from '@/app/_components/listing-badge';
 import { LocalTime } from '@/app/_components/local-time';
 import { orAdminNotFound, requireAdminPage } from '@/app/_lib/guards';
@@ -14,39 +13,44 @@ import {
 } from '@/lib/moderation-options';
 import { getAdminUser, type AdminReportRow } from '@/server/services/admin-users';
 import { BanControls } from '../../_components/ban-controls';
+import {
+  AdminPageHeader,
+  AdminSection,
+  Dot,
+  Empty,
+  LINK,
+  Row,
+  RowList,
+} from '../../_components/admin-ui';
 
 export const metadata: Metadata = { title: 'Admin · User' };
 
 type AdminUserPageProps = { params: Promise<{ id: string }> };
 
-const EMPTY = <p className="text-sm text-muted-foreground">Nothing here.</p>;
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={`${id}-heading`} className="space-y-3">
-      <h2 id={`${id}-heading`} className="text-lg font-medium">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
+const EMPTY = <Empty />;
 
 function ReportList({ rows }: { rows: AdminReportRow[] }) {
   if (rows.length === 0) return EMPTY;
   return (
-    <ul className="space-y-1 text-sm">
+    <RowList>
       {rows.map((report) => (
-        <li key={report.id}>
-          <Link href={`/admin/reports/${report.id}`} prefetch={false} className="underline">
+        <Row key={report.id}>
+          <Link href={`/admin/reports/${report.id}`} prefetch={false} className={LINK}>
             {REPORT_REASON_LABELS[report.reason]}
-          </Link>{' '}
-          · {report.targetType}: {report.targetLabel} ·{' '}
-          <LocalTime iso={report.createdAt.toISOString()} /> ·{' '}
-          {report.reporterName ?? 'Deleted user'} · {REPORT_STATUS_LABELS[report.status]}
-        </li>
+          </Link>
+          <Dot />
+          <span>
+            {report.targetType}: {report.targetLabel}
+          </span>
+          <Dot />
+          <LocalTime iso={report.createdAt.toISOString()} className="text-ink-2" />
+          <Dot />
+          <span>{report.reporterName ?? 'Deleted user'}</span>
+          <Dot />
+          <span className="text-ink-2">{REPORT_STATUS_LABELS[report.status]}</span>
+        </Row>
       ))}
-    </ul>
+    </RowList>
   );
 }
 
@@ -58,92 +62,111 @@ export default async function AdminUserPage({ params }: AdminUserPageProps) {
   const canModerate = viewer.userId !== user.id && user.isAdmin !== true;
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-2">
-        <Link href="/admin/listings" className="text-sm underline">
-          Back to admin
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{user.displayName}</h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
+    <div className="space-y-9">
+      <AdminPageHeader
+        title={user.displayName}
+        back={{ href: '/admin/listings', label: 'Back to admin' }}
+        actions={
+          canModerate ? (
+            <BanControls userId={user.id} displayName={user.displayName} banned={banned} />
+          ) : undefined
+        }
+      >
+        <div className="flex flex-wrap items-center gap-3 text-sm text-ink-2">
           <ListingBadge
             badge={{ label: banned ? 'Banned' : 'Active', tone: banned ? 'danger' : 'success' }}
           />
           <span>Joined {formatMonthYear(user.joinedAt)}</span>
           <span>{user.homeSchool ? user.homeSchool.name : 'No home school'}</span>
         </div>
-        {canModerate && (
-          <BanControls userId={user.id} displayName={user.displayName} banned={banned} />
-        )}
-      </header>
+      </AdminPageHeader>
 
-      <Section id="listings" title="Listings">
+      <AdminSection id="listings" title="Listings">
         {user.listings.length === 0 ? (
           EMPTY
         ) : (
-          <ul className="space-y-1 text-sm">
+          <RowList>
             {user.listings.map((listing) => (
-              <li key={listing.id}>
-                <Link href={`/admin/listings/${listing.id}`} className="underline">
+              <Row key={listing.id}>
+                <Link href={`/admin/listings/${listing.id}`} className={LINK}>
                   {listing.title}
-                </Link>{' '}
-                · {listing.schoolName} · {REVIEW_STATUS_LABELS[listing.reviewStatus]}
-                {listing.openReports > 0 ? ` · ${listing.openReports} open` : ''}
-              </li>
+                </Link>
+                <Dot />
+                <span>{listing.schoolName}</span>
+                <Dot />
+                <span className="text-ink-2">{REVIEW_STATUS_LABELS[listing.reviewStatus]}</span>
+                {listing.openReports > 0 && (
+                  <>
+                    <Dot />
+                    <span className="font-semibold text-warn">{listing.openReports} open</span>
+                  </>
+                )}
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </Section>
+      </AdminSection>
 
-      <Section id="conversations" title="Conversations">
+      <AdminSection id="conversations" title="Conversations">
         {user.conversations.length === 0 ? (
           EMPTY
         ) : (
-          <ul className="space-y-1 text-sm">
+          <RowList>
             {user.conversations.map((conversation) => (
-              <li key={conversation.id}>
+              <Row key={conversation.id}>
                 <Link
                   href={`/admin/conversations/${conversation.id}?from=user:${user.id}`}
                   prefetch={false}
-                  className="underline"
+                  className={LINK}
                 >
                   {conversation.listingTitle ?? 'Listing removed'}
-                </Link>{' '}
-                · as {conversation.role} · with {conversation.otherName ?? 'Deleted user'}
+                </Link>
+                <Dot />
+                <span>
+                  as {conversation.role} · with {conversation.otherName ?? 'Deleted user'}
+                </span>
                 {conversation.lastMessageAt && (
                   <>
-                    {' '}
-                    · <LocalTime iso={conversation.lastMessageAt.toISOString()} />
+                    <Dot />
+                    <LocalTime
+                      iso={conversation.lastMessageAt.toISOString()}
+                      className="text-ink-2"
+                    />
                   </>
                 )}
-              </li>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </Section>
+      </AdminSection>
 
-      <Section id="received" title="Reports received">
+      <AdminSection id="received" title="Reports received">
         <ReportList rows={user.reportsReceived} />
-      </Section>
+      </AdminSection>
 
-      <Section id="filed" title="Reports filed">
+      <AdminSection id="filed" title="Reports filed">
         <ReportList rows={user.reportsFiled} />
-      </Section>
+      </AdminSection>
 
-      <Section id="history" title="History">
+      <AdminSection id="history" title="History">
         {user.history.length === 0 ? (
           EMPTY
         ) : (
-          <ul className="space-y-1 text-sm">
+          <RowList>
             {user.history.map((entry) => (
-              <li key={entry.id}>
-                <LocalTime iso={entry.createdAt.toISOString()} /> · {ACTION_LABELS[entry.action]} by{' '}
-                {auditActorLabel(entry)}
-                {entry.snapshot ? ` (${summarizeSnapshot(entry.snapshot)})` : ''}
-              </li>
+              <Row key={entry.id}>
+                <LocalTime iso={entry.createdAt.toISOString()} className="text-ink-2" />
+                <Dot />
+                <span>
+                  <span className="font-semibold">{ACTION_LABELS[entry.action]}</span> by{' '}
+                  {auditActorLabel(entry)}
+                  {entry.snapshot ? ` (${summarizeSnapshot(entry.snapshot)})` : ''}
+                </span>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </Section>
+      </AdminSection>
     </div>
   );
 }

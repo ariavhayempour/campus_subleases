@@ -3,6 +3,7 @@ import { LocalTime } from '@/app/_components/local-time';
 import { ACTION_LABELS, summarizeSnapshot } from '@/lib/audit-labels';
 import { auditActorLabel } from '@/lib/moderation-options';
 import type { AuditEntry } from '@/server/services/audit';
+import { Empty, LINK, TABLE, TD, TH } from './admin-ui';
 
 const TARGET_PATHS: Record<string, string> = {
   listing: '/admin/listings',
@@ -17,37 +18,37 @@ function AuditTargetLink({ entry }: { entry: AuditEntry }) {
   // A deleted listing has no page left to open.
   if (!base || entry.action === 'deleted_listing') return <span>{label}</span>;
   return (
-    <Link href={`${base}/${entry.targetId}`} prefetch={false} className="underline">
+    <Link href={`${base}/${entry.targetId}`} prefetch={false} className={LINK}>
       {label}
     </Link>
   );
 }
 
 export function AuditTable({ entries }: { entries: AuditEntry[] }) {
-  if (entries.length === 0) return <p className="text-sm text-muted-foreground">Nothing here.</p>;
+  if (entries.length === 0) return <Empty />;
   return (
-    <table className="w-full text-left text-sm">
-      <thead className="border-b text-muted-foreground">
+    <table className={TABLE}>
+      <thead>
         <tr>
-          <th className="py-2 pr-4 font-medium">Time</th>
-          <th className="py-2 pr-4 font-medium">Admin</th>
-          <th className="py-2 pr-4 font-medium">Action</th>
-          <th className="py-2 pr-4 font-medium">Target</th>
-          <th className="py-2 font-medium">Details</th>
+          <th className={TH}>Time</th>
+          <th className={TH}>Admin</th>
+          <th className={TH}>Action</th>
+          <th className={TH}>Target</th>
+          <th className={TH}>Details</th>
         </tr>
       </thead>
       <tbody>
         {entries.map((entry) => (
-          <tr key={entry.id} className="border-b align-top">
-            <td className="py-2 pr-4 whitespace-nowrap">
+          <tr key={entry.id}>
+            <td className={`${TD} whitespace-nowrap text-ink-2`}>
               <LocalTime iso={entry.createdAt.toISOString()} />
             </td>
-            <td className="py-2 pr-4">{auditActorLabel(entry)}</td>
-            <td className="py-2 pr-4">{ACTION_LABELS[entry.action]}</td>
-            <td className="py-2 pr-4">
+            <td className={TD}>{auditActorLabel(entry)}</td>
+            <td className={`${TD} font-semibold`}>{ACTION_LABELS[entry.action]}</td>
+            <td className={`${TD} whitespace-nowrap`}>
               <AuditTargetLink entry={entry} />
             </td>
-            <td className="py-2 break-words">{summarizeSnapshot(entry.snapshot)}</td>
+            <td className={`${TD} break-words text-ink-2`}>{summarizeSnapshot(entry.snapshot)}</td>
           </tr>
         ))}
       </tbody>

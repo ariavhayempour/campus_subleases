@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireSignedIn } from '@/app/_lib/guards';
 import { APP_NAME } from '@/lib/app-config';
 import { listActiveSchools } from '@/server/services/schools';
@@ -15,16 +14,15 @@ export default async function OnboardingPage() {
   if (!state.needsOnboarding && state.homeSchoolSlug) redirect(`/${state.homeSchoolSlug}`);
   const schools = await listActiveSchools();
   return (
-    <main className="mx-auto max-w-md px-4 py-16">
-      <Card>
-        <CardHeader>
-          <CardTitle>Welcome to {APP_NAME}</CardTitle>
-          <CardDescription>Pick your school to see subleases near campus.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OnboardingForm schools={schools} />
-        </CardContent>
-      </Card>
+    <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <h1 className="varsity text-[clamp(2.75rem,6vw,4.5rem)] font-black text-ink">
+        Welcome to {APP_NAME}
+      </h1>
+      <p className="mt-3 max-w-[60ch] text-[16px] text-ink-2">
+        Pick your school to see subleases near campus. This is your home school: you&apos;ll see its
+        listings and colors, and it can&apos;t be changed later.
+      </p>
+      <OnboardingForm schools={schools} />
     </main>
   );
 }

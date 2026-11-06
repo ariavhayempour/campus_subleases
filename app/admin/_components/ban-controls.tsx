@@ -25,11 +25,16 @@ export function BanControls({ userId, displayName, banned }: BanControlsProps) {
 
   return (
     <div className="space-y-2">
-      <Button variant={banned ? 'outline' : 'destructive'} disabled={pending} onClick={run}>
+      <Button
+        variant={banned ? 'outline' : 'destructive'}
+        disabled={pending}
+        onClick={run}
+        className={banned ? undefined : 'bg-bad text-white hover:bg-bad/90'}
+      >
         {banned ? 'Unban user' : 'Ban user'}
       </Button>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-bad">
           {error}
         </p>
       )}

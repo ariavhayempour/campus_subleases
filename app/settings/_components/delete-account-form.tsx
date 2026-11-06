@@ -36,7 +36,7 @@ export function DeleteAccountForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="max-w-sm space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor="delete-confirm">Type {CONFIRM_WORD} to confirm</Label>
         <Input
@@ -48,17 +48,22 @@ export function DeleteAccountForm() {
           aria-describedby={fieldError ? 'delete-confirm-error' : undefined}
         />
         {fieldError && (
-          <p id="delete-confirm-error" className="text-sm text-destructive">
+          <p id="delete-confirm-error" className="text-sm font-medium text-bad">
             {fieldError}
           </p>
         )}
       </div>
       {formError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm font-medium text-bad">
           {formError}
         </p>
       )}
-      <Button type="submit" variant="destructive" disabled={pending}>
+      <Button
+        type="submit"
+        variant="destructive"
+        className="bg-bad text-white hover:bg-bad/90"
+        disabled={pending}
+      >
         Delete my account
       </Button>
     </form>

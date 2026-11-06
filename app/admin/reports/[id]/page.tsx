@@ -14,6 +14,7 @@ import { getActor } from '@/server/auth/get-actor';
 import { getReport } from '@/server/services/admin-reports';
 import { AdminThread } from '../../_components/admin-thread';
 import { ResolveReportForm } from '../../_components/resolve-report-form';
+import { AdminPageHeader, AdminSection, LINK } from '../../_components/admin-ui';
 
 export const metadata: Metadata = { title: 'Admin · Report' };
 
@@ -23,25 +24,22 @@ export default async function AdminReportPage({ params }: AdminReportPageProps) 
   const { id } = await params;
   const report = await orAdminNotFound(getReport(await getActor(), id));
   const { target } = report;
-  const gone = <p className="text-sm">This {report.targetType} no longer exists.</p>;
+  const gone = (
+    <p className="rounded-md bg-surface-2 px-4 py-5 text-sm text-ink-2">
+      This {report.targetType} no longer exists.
+    </p>
+  );
 
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <Link href="/admin/reports" className="text-sm underline">
-          Back to reports
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {REPORT_REASON_LABELS[report.reason]}
-        </h1>
-        <p className="text-sm">
+      <AdminPageHeader
+        title={REPORT_REASON_LABELS[report.reason]}
+        back={{ href: '/admin/reports', label: 'Back to reports' }}
+      >
+        <p className="text-sm text-ink-2">
           Reported by{' '}
           {report.reporter ? (
-            <Link
-              href={`/admin/users/${report.reporter.id}`}
-              prefetch={false}
-              className="underline"
-            >
+            <Link href={`/admin/users/${report.reporter.id}`} prefetch={false} className={LINK}>
               {report.reporter.displayName}
             </Link>
           ) : (
@@ -50,23 +48,23 @@ export default async function AdminReportPage({ params }: AdminReportPageProps) 
           · <LocalTime iso={report.createdAt.toISOString()} /> ·{' '}
           {REPORT_STATUS_LABELS[report.status]}
         </p>
-        <p className="min-w-0 whitespace-pre-wrap break-words text-sm">
+        <p className="max-w-[70ch] min-w-0 rounded-md bg-surface-2 px-4 py-3 text-[15px] break-words whitespace-pre-wrap text-ink">
           {report.details ?? 'No details given.'}
         </p>
         {report.otherOpenReports > 0 && (
-          <p className="text-sm text-amber-700 dark:text-amber-300">
+          <p className="text-sm font-semibold text-warn">
             {report.otherOpenReports} other open report{report.otherOpenReports === 1 ? '' : 's'} on
             this target
           </p>
         )}
-      </header>
+      </AdminPageHeader>
 
       {report.status === 'resolved' && (
-        <section aria-labelledby="resolution-heading" className="space-y-1 text-sm">
-          <h2 id="resolution-heading" className="text-lg font-medium">
+        <section aria-labelledby="resolution-heading" className="space-y-1.5 text-sm">
+          <h2 id="resolution-heading" className="varsity text-[1.375rem] font-extrabold">
             Resolution
           </h2>
-          <p>
+          <p className="text-ink-2">
             Resolved by {report.resolvedByName ?? 'a removed admin'}
             {report.resolvedAt && (
               <>
@@ -80,13 +78,13 @@ export default async function AdminReportPage({ params }: AdminReportPageProps) 
       )}
 
       <section aria-labelledby="target-heading" className="space-y-3">
-        <h2 id="target-heading" className="text-lg font-medium">
+        <h2 id="target-heading" className="varsity text-[1.375rem] font-extrabold">
           Reported {REPORT_TARGET_LABELS[report.targetType].toLowerCase()}
         </h2>
         {target.type === 'listing' &&
           (target.listing ? (
             <div className="space-y-2 text-sm">
-              <Link href={`/admin/listings/${target.listing.id}`} className="underline">
+              <Link href={`/admin/listings/${target.listing.id}`} className={LINK}>
                 {target.listing.title}
               </Link>
               <div className="flex flex-wrap gap-2">
@@ -101,7 +99,7 @@ export default async function AdminReportPage({ params }: AdminReportPageProps) 
         {target.type === 'user' &&
           (target.user ? (
             <p className="text-sm">
-              <Link href={`/admin/users/${target.user.id}`} prefetch={false} className="underline">
+              <Link href={`/admin/users/${target.user.id}`} prefetch={false} className={LINK}>
                 {target.user.displayName}
               </Link>{' '}
               · {USER_STATUS_LABELS[target.user.status]}
@@ -112,12 +110,13 @@ export default async function AdminReportPage({ params }: AdminReportPageProps) 
         {target.type === 'message' &&
           (target.message && target.conversation ? (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Admin view: read-only. This view is logged.
-              </p>
+              <p className="text-sm text-ink-2">Admin view: read-only. This view is logged.</p>
               {!target.conversation.messages.some((m) => m.id === target.message?.id) && (
-                <div aria-current="true" className="rounded-lg border p-3 text-sm ring-2 ring-ring">
-                  <p className="text-xs text-muted-foreground">
+                <div
+                  aria-current="true"
+                  className="rounded-md bg-warn-bg p-3.5 text-sm ring-2 ring-warn"
+                >
+                  <p className="text-xs text-ink-2">
                     Reported message · {target.senderName ?? 'Deleted user'} ·{' '}
                     <LocalTime iso={target.message.createdAt} />
                   </p>
@@ -135,12 +134,9 @@ export default async function AdminReportPage({ params }: AdminReportPageProps) 
       </section>
 
       {report.status === 'open' && (
-        <section aria-labelledby="resolve-heading" className="space-y-3">
-          <h2 id="resolve-heading" className="text-lg font-medium">
-            Resolve
-          </h2>
+        <AdminSection id="resolve" title="Resolve">
           <ResolveReportForm reportId={report.id} />
-        </section>
+        </AdminSection>
       )}
     </div>
   );

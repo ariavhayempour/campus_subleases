@@ -15,7 +15,8 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { ImagePlus } from 'lucide-react';
 import { requestPhotoUploadsAction } from '@/app/listings/actions';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,6 +67,8 @@ export function PhotoUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
+  // A stable id keeps dnd-kit's generated aria ids the same on server and client.
+  const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -185,9 +188,14 @@ export function PhotoUploader({
 
   return (
     <div className="space-y-3">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+      >
         <SortableContext items={items.map((item) => item.key)} strategy={rectSortingStrategy}>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {items.map((item, index) => (
               <SortablePhoto key={item.key} item={item} index={index} onRemove={remove} />
             ))}
@@ -213,14 +221,15 @@ export function PhotoUploader({
         onClick={() => inputRef.current?.click()}
         disabled={requesting || items.length >= MAX_PHOTOS}
       >
+        <ImagePlus aria-hidden="true" />
         Add photos
       </Button>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-ink-2">
         Up to {MAX_PHOTOS} JPEG, PNG, or WebP photos, 10 MB each. Drag to reorder; the first photo
         is the cover.
       </p>
       {message && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm font-medium text-bad">
           {message}
         </p>
       )}

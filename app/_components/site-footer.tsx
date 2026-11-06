@@ -16,14 +16,17 @@ export function SiteFooter() {
   const pathname = usePathname();
   if (pathname === '/messages' || pathname.startsWith('/messages/')) return null;
   return (
-    <footer className="mt-auto border-t">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <p>{APP_NAME} is free and for students only. Not affiliated with any university.</p>
+    <footer className="mt-auto border-t border-line bg-surface-2">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 text-sm text-ink-2 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <p>
+          <span className="font-semibold text-ink">{APP_NAME}</span> is free and for students only.
+          Not affiliated with any university.
+        </p>
         <nav aria-label="Footer">
-          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+          <ul className="flex flex-wrap gap-x-5 gap-y-1">
             {FOOTER_LINKS.map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="hover:text-foreground hover:underline">
+                <Link href={link.href} className="text-ink no-underline hover:underline">
                   {link.label}
                 </Link>
               </li>
