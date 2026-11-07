@@ -101,6 +101,9 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 `/me/favorites` (signed in, onboarded; `noindex`).
 The listing page shows **Report listing** to signed-in visitors (not the owner or admins); see
 `moderation.md`.
+The host's name and join date (`host`) are returned only to the owner, admins, and signed-in
+students whose home school is the listing's school; signed-out and other-school visitors get
+`host: null` and see a locked "Student host" placeholder.
 The listing page shows **Message host** to visitors (owners and admins see no button); it becomes
 **View conversation** when `conversationId` is set. `/messages`, `/messages/new?listing=<id>`, and
 `/messages/[id]` are described in `messaging.md`.

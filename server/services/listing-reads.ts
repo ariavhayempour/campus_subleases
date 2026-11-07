@@ -43,7 +43,8 @@ export type ListingDetail = Omit<
   isPublic: boolean;
   isExpired: boolean;
   school: { slug: string; name: string; campusLocation: LngLat };
-  host: { displayName: string; joinedAt: Date };
+  // Null for signed-out and other-school visitors.
+  host: { displayName: string; joinedAt: Date } | null;
   distanceKm: number;
   photos: ListingPhotoView[];
   viewer: 'owner' | 'admin' | 'visitor';
@@ -152,6 +153,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
     viewer === 'visitor' &&
     actor.kind === 'user' &&
     (await isOutsideHomeSchool(actor, listing.schoolId));
+  const showHost = viewer !== 'visitor' || (actor.kind === 'user' && !crossSchool);
 
   return {
     id: listing.id,
@@ -185,7 +187,7 @@ export async function getListingDetail(actor: Actor, listingId: string): Promise
     isPublic: row.isPublic,
     isExpired: row.isExpired,
     school: { slug: row.schoolSlug, name: row.schoolName, campusLocation: row.campusLocation },
-    host: { displayName: row.hostName, joinedAt: row.hostJoinedAt },
+    host: showHost ? { displayName: row.hostName, joinedAt: row.hostJoinedAt } : null,
     distanceKm: row.distanceKm,
     photos: await loadPhotos(listing.id),
     viewer,

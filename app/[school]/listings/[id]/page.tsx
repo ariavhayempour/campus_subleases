@@ -235,20 +235,37 @@ export default async function ListingPage({ params }: ListingPageProps) {
                   Edit your listing
                 </Link>
               )}
-              <div className="flex items-center gap-3 border-t border-line pt-4">
-                <span
-                  aria-hidden="true"
-                  className="varsity grid size-11 shrink-0 place-items-center rounded-full bg-school-tint text-lg font-extrabold text-school"
-                >
-                  {listing.host.displayName.slice(0, 1)}
-                </span>
-                <p className="text-sm text-ink-2">
-                  <span className="block text-[15px] font-semibold text-ink">
-                    Hosted by {listing.host.displayName}
+              {listing.host ? (
+                <div className="flex items-center gap-3 border-t border-line pt-4">
+                  <span
+                    aria-hidden="true"
+                    className="varsity grid size-11 shrink-0 place-items-center rounded-full bg-school-tint text-lg font-extrabold text-school"
+                  >
+                    {listing.host.displayName.slice(0, 1)}
                   </span>
-                  Student host · joined {formatMonthYear(listing.host.joinedAt)}
-                </p>
-              </div>
+                  <p className="text-sm text-ink-2">
+                    <span className="block text-[15px] font-semibold text-ink">
+                      Hosted by {listing.host.displayName}
+                    </span>
+                    Student host · joined {formatMonthYear(listing.host.joinedAt)}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 border-t border-line pt-4">
+                  <span
+                    aria-hidden="true"
+                    className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-ink-2"
+                  >
+                    <Lock className="size-5" />
+                  </span>
+                  <p className="text-sm text-ink-2">
+                    <span className="block text-[15px] font-semibold text-ink">Student host</span>
+                    {actor.kind === 'user'
+                      ? `Host details are shown only to ${listing.school.name} students.`
+                      : 'Sign in to see who is hosting.'}
+                  </p>
+                </div>
+              )}
               <p className="flex gap-2.5 rounded-md bg-surface-2 p-3 text-[13px] leading-snug text-ink-2">
                 <ShieldCheck aria-hidden="true" className="mt-px size-4 shrink-0 text-ok" />
                 {SAFETY_NOTICE}

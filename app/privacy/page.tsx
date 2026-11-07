@@ -50,8 +50,9 @@ export default function PrivacyPage() {
       <h2>Who can see what</h2>
       <ul>
         <li>
-          Other users see your display name (first name and last initial; never your full last name)
-          and the month you joined. They never see your email address.
+          Your display name (first name and last initial; never your full last name) and the month
+          you joined appear on your listings only to signed-in students at the listing&apos;s
+          school. People you message also see your display name. No one sees your email address.
         </li>
         <li>
           Public listings show the street address, map location, photos, and details to anyone,
