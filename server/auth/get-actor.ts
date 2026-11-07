@@ -1,20 +1,27 @@
 import { isClerkAPIResponseError } from '@clerk/nextjs/errors';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import * as Sentry from '@sentry/nextjs';
 import { cache } from 'react';
+import { clientIp } from '@/lib/client-ip';
 import type { Actor } from '@/server/services/actor';
 import { ensureUser, getUserById } from '@/server/services/users';
 
+const anonymous = async (): Promise<Actor> => ({
+  kind: 'anonymous',
+  ip: clientIp(await headers()),
+});
+
 export const getActor = cache(async (): Promise<Actor> => {
   const { userId, sessionClaims } = await auth();
-  if (!userId) return { kind: 'anonymous' };
+  if (!userId) return anonymous();
   if (!(await getUserById(userId))) {
     // A deleted user's token stays valid briefly; treat them as signed out instead of recreating a row.
     const clerkUser = await currentUser().catch((error: unknown) => {
       if (isClerkAPIResponseError(error) && error.status === 404) return null;
       throw error;
     });
-    if (!clerkUser) return { kind: 'anonymous' };
+    if (!clerkUser) return anonymous();
     await ensureUser({
       id: userId,
       firstName: clerkUser.firstName ?? null,

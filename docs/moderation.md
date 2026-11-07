@@ -24,6 +24,8 @@ Code: `server/services/reports.ts` (create, auto-hide), `moderation.ts` (blocks)
   the database. The check and the insert run in one transaction after a per-reporter advisory lock
   (`pg_advisory_xact_lock(hashtext('reports:' || userId))`), so concurrent reports cannot both
   pass. Over the limit: `RateLimited`, "You can send up to 20 reports a day. Try again tomorrow."
+- **Block and unblock** share one limit of 10 per user per hour, including unblocks from
+  Settings (fixed window; see `rate-limits.md`).
 - **Duplicates:** a partial unique index (`reports_open_unique`: reporter, target type, target id,
   where `status = 'open'`) allows one open report per reporter per target. The insert uses
   `ON CONFLICT DO NOTHING`; a conflict gives `Conflict`, "You've already reported this. We'll

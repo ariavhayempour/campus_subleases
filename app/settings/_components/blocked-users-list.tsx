@@ -1,5 +1,6 @@
 'use client';
 
+import { actionErrorMessage, GENERIC_FAILURE } from '@/app/_lib/action-message';
 import { useState, useTransition } from 'react';
 import { LocalTime } from '@/app/_components/local-time';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ export type BlockedUserRow = { id: string; displayName: string; blockedAt: strin
 
 export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (users.length === 0) {
@@ -17,11 +18,11 @@ export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
   }
 
   function unblock(userId: string) {
-    setFailed(false);
+    setError(null);
     setPendingId(userId);
     startTransition(async () => {
       const result = await unblockFromSettingsAction(userId).catch(() => null);
-      if (!result?.ok) setFailed(true);
+      if (!result?.ok) setError(actionErrorMessage(result, GENERIC_FAILURE));
       setPendingId(null);
     });
   }
@@ -49,9 +50,9 @@ export function BlockedUsersList({ users }: { users: BlockedUserRow[] }) {
           </li>
         ))}
       </ul>
-      {failed && (
+      {error && (
         <p role="alert" className="mt-2 text-sm font-medium text-bad">
-          Something went wrong. Try again.
+          {error}
         </p>
       )}
     </div>

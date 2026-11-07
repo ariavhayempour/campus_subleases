@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ANONYMOUS, type UserActor } from '@/server/services/actor';
 import { Forbidden, RateLimited, ValidationError } from '@/server/services/errors';
 import {
@@ -10,6 +10,7 @@ import {
   processListingUploads,
   requestPhotoUploads,
 } from '@/server/services/photos';
+import * as storage from '@/server/storage/client';
 import { BUCKETS, downloadObject, objectExists } from '@/server/storage/client';
 import { cleanupStorage, jpegWithGps, putUpload, testUserId } from '../helpers/photos';
 
@@ -64,23 +65,47 @@ describe('requestPhotoUploads', () => {
     expect(error).toBeInstanceOf(ValidationError);
   });
 
-  it('allows at most 20 uploads per rolling hour', async () => {
+  const jpegs = (count: number) => ({
+    files: Array.from({ length: count }, () => ({ contentType: 'image/jpeg' as const, size: 1 })),
+  });
+
+  it('limits signed upload URLs to 20 per hour, counted at issuance', async () => {
+    const actor = actorFor(newUser());
+    await requestPhotoUploads(actor, jpegs(10));
+    await requestPhotoUploads(actor, jpegs(PHOTO_UPLOADS_PER_HOUR - 11));
+    await expect(requestPhotoUploads(actor, jpegs(1))).resolves.toHaveLength(1);
+    const error = await requestPhotoUploads(actor, jpegs(1)).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(RateLimited);
+    expect((error as RateLimited).message).toBe('Too many photo uploads — try again in an hour');
+  });
+
+  it('refuses a batch that would go over without using up the rest of the hour', async () => {
+    const actor = actorFor(newUser());
+    await requestPhotoUploads(actor, jpegs(10));
+    await requestPhotoUploads(actor, jpegs(5));
+    await expect(requestPhotoUploads(actor, jpegs(6))).rejects.toBeInstanceOf(RateLimited);
+    await expect(requestPhotoUploads(actor, jpegs(5))).resolves.toHaveLength(5);
+  });
+
+  it('does not count stored objects', async () => {
     const userId = newUser();
     const tiny = Buffer.from('x');
     await Promise.all(
-      Array.from({ length: PHOTO_UPLOADS_PER_HOUR - 1 }, () => putUpload(userId, tiny)),
+      Array.from({ length: PHOTO_UPLOADS_PER_HOUR }, () => putUpload(userId, tiny)),
     );
-    await expect(
-      requestPhotoUploads(actorFor(userId), {
-        files: [
-          { contentType: 'image/jpeg', size: 1 },
-          { contentType: 'image/jpeg', size: 1 },
-        ],
-      }),
-    ).rejects.toBeInstanceOf(RateLimited);
-    await expect(
-      requestPhotoUploads(actorFor(userId), { files: [{ contentType: 'image/jpeg', size: 1 }] }),
-    ).resolves.toHaveLength(1);
+    await expect(requestPhotoUploads(actorFor(userId), jpegs(1))).resolves.toHaveLength(1);
+  });
+
+  it('issues no URLs on a rejected request', async () => {
+    const actor = actorFor(newUser());
+    await requestPhotoUploads(actor, jpegs(10));
+    await requestPhotoUploads(actor, jpegs(10));
+    const signed = vi.spyOn(storage, 'createSignedUploadUrl');
+    await expect(requestPhotoUploads(actor, jpegs(1))).rejects.toBeInstanceOf(RateLimited);
+    expect(signed).not.toHaveBeenCalled();
+    await requestPhotoUploads(actorFor(newUser()), jpegs(1));
+    expect(signed).toHaveBeenCalledTimes(1);
+    signed.mockRestore();
   });
 });
 

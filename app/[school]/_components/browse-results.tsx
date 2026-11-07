@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { loadMoreListingsAction } from '@/app/[school]/actions';
+import { MAX_LOAD_CARDS } from '@/lib/search-options';
 import { ListingTile } from '@/app/_components/listing-tile';
 import { Button } from '@/components/ui/button';
 import type { ListingCard } from '@/server/services/listing-cards';
@@ -78,11 +79,16 @@ export function BrowseResults({
     startTransition(async () => {
       let shown = initial.cards;
       let offset = initial.nextOffset;
-      while (offset !== null && shown.length < target) {
-        const result = await loadMoreListingsAction(schoolId, query, offset).catch(() => null);
-        if (!result?.ok || result.data.cards.length === 0) break;
-        shown = appendNew(shown, result.data.cards);
-        offset = result.data.nextOffset;
+      // One request for every remembered page, so returning via Back costs one rate-limit unit.
+      if (offset !== null) {
+        const limit = Math.min(target - shown.length, MAX_LOAD_CARDS);
+        const result = await loadMoreListingsAction(schoolId, query, offset, limit).catch(
+          () => null,
+        );
+        if (result?.ok) {
+          shown = appendNew(shown, result.data.cards);
+          offset = result.data.nextOffset;
+        }
       }
       // Always a new array, so the effect below settles the list even when nothing was added.
       setCards([...shown]);

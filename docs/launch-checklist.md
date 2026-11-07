@@ -31,12 +31,18 @@ here, only variable names.
 - [ ] `CRON_SECRET` set. After the first production deploy, the cron for `/api/cron/cleanup`
       (daily) is visible under Project, Cron Jobs.
 - [ ] `SENTRY_AUTH_TOKEN` set (Production and Preview).
+- [x] Firewall rule `Per-IP rate limit` (300 requests / 60 s per IP, not `/_next/`) published
+      2026-11-06 in **Log** mode (see `rate-limits.md`).
+- [ ] After a few days of traffic, review the rule's traffic in Firewall. If normal visitors
+      never reach 300/min, switch it to the default 429 action: Firewall → Configure → edit the
+      rule → If exceeded: Default (429) → Save → Review Changes → Publish. If real users hit it,
+      raise the limit instead.
 
 ## Clerk production instance
 
 - [ ] Email + password sign-up; first and last name required; no usernames.
 - [ ] Email verification code required.
-- [ ] Bot protection on.
+- [ ] Bot protection on (sign-up CAPTCHA), so scripted sign-ups can't burn monthly active users.
 - [ ] Owner has `publicMetadata.role = "admin"`.
 - [ ] Webhook endpoint `https://studentsubleases.com/api/webhooks/clerk` subscribed to
       `user.created`, `user.updated`, `user.deleted`; its signing secret is set as

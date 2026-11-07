@@ -1,5 +1,6 @@
 'use client';
 
+import { actionErrorMessage } from '@/app/_lib/action-message';
 import { SignUpButton } from '@clerk/nextjs';
 import { Heart } from 'lucide-react';
 import { useState, useTransition } from 'react';
@@ -32,7 +33,7 @@ export function FavoriteButton({
   className,
 }: FavoriteButtonProps) {
   const [favorited, setFavorited] = useState(initialFavorited);
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const buttonClass = cn(baseClass, withText ? textClass : iconClass);
   const icon = <Heart aria-hidden className={cn('size-4', favorited && 'fill-bad text-bad')} />;
@@ -53,12 +54,12 @@ export function FavoriteButton({
   function toggle() {
     const next = !favorited;
     setFavorited(next);
-    setFailed(false);
+    setError(null);
     startTransition(async () => {
       const result = await setFavoriteAction(listingId, next).catch(() => null);
       if (!result?.ok) {
         setFavorited(!next);
-        setFailed(true);
+        setError(actionErrorMessage(result, 'Could not update your saved listings. Try again.'));
       }
     });
   }
@@ -80,7 +81,7 @@ export function FavoriteButton({
         {icon}
         {text}
       </button>
-      {failed && (
+      {error && (
         <span
           role="alert"
           className={cn(
@@ -89,7 +90,7 @@ export function FavoriteButton({
               'absolute right-0 top-full z-10 mt-1 w-44 rounded-md bg-background px-2 py-1 shadow-sm ring-1 ring-border',
           )}
         >
-          Could not update your saved listings. Try again.
+          {error}
         </span>
       )}
     </span>

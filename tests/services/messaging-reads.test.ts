@@ -22,6 +22,8 @@ import {
   insertPhoto,
 } from '../helpers/fixtures';
 import { insertConversation, insertMessage, liveListing } from '../helpers/messaging';
+import { RATE_LIMITS } from '@/server/services/rate-limit';
+import { expectRateLimited, TOO_FAST } from '../helpers/rate-limit';
 
 vi.mock('@/server/realtime/publish', () => ({
   publishToUser: vi.fn().mockResolvedValue(undefined),
@@ -304,5 +306,18 @@ describe('getConversationStart', () => {
       await expect(getConversationStart(actorFor(renter.id), listing.id)).rejects.toBeInstanceOf(
         NotFound,
       );
+    }));
+});
+
+describe('listEarlierMessages rate limit', () => {
+  it('allows 15 calls a minute, then refuses', () =>
+    withRollback(async () => {
+      const { conversation, renter } = await setup();
+      const anchor = await insertMessage(conversation.id, renter.id, 'hi', ago(MINUTE));
+      const input = { conversationId: conversation.id, before: anchor.id };
+      for (let i = 0; i < RATE_LIMITS.earlierMessages.limit; i++) {
+        await listEarlierMessages(actorFor(renter.id), input);
+      }
+      await expectRateLimited(listEarlierMessages(actorFor(renter.id), input), TOO_FAST);
     }));
 });

@@ -2,6 +2,7 @@ import { setupClerkTestingToken } from '@clerk/testing/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { BROWSE_BBOX, removeBrowseHost, seedBrowseListings } from './helpers/browse';
 import { prepareHost } from './helpers/listings';
+import { fillRateLimit, resetRateLimits } from './helpers/rate-limits';
 import { signInTestUser, signInThroughForm, testUserEmail } from './helpers/sign-in';
 
 const SCOPE = '/uw-madison?q=zebracorn';
@@ -120,6 +121,24 @@ test('a signed-in student saves a listing and unsaves it from Saved', async ({ p
   await expect(saved).toBeVisible();
   await saved.getByRole('button', { name: 'Remove “Zebracorn saved studio” from saved' }).click();
   await expect(saved).toHaveCount(0);
+});
+
+test('a rate-limited save says why instead of a generic error', async ({ page }) => {
+  test.skip(!testUserEmail && !process.env.CI, 'E2E Clerk test user not configured');
+
+  await seedBrowseListings([{ title: 'Zebracorn limited studio', rentCents: 90_000 }]);
+  const userId = await signInTestUser(page);
+  await page.goto('/');
+  await prepareHost(userId, 'uw-madison');
+  await fillRateLimit(`favorites:${userId}`, 20, 60_000);
+
+  await page.goto(SCOPE);
+  const tile = page.getByRole('article').filter({ hasText: 'Zebracorn limited studio' });
+  await tile.getByRole('button', { name: 'Save “Zebracorn limited studio”' }).click();
+  await expect(
+    page.getByText("You're doing that too fast — wait a minute and try again."),
+  ).toBeVisible();
+  await resetRateLimits();
 });
 
 test('tile hearts are named per listing', async ({ page }) => {

@@ -18,6 +18,8 @@ import {
 import { uploadedPhoto } from '../helpers/listings';
 import { BUCKETS, objectExists, uploadObject } from '@/server/storage/client';
 import { cleanupStorage } from '../helpers/photos';
+import { RATE_LIMITS } from '@/server/services/rate-limit';
+import { expectRateLimited, TOO_MANY_CHANGES } from '../helpers/rate-limit';
 
 vi.mock('@/server/services/photos', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/server/services/photos')>();
@@ -419,5 +421,32 @@ describe('deleteListing', () => {
       await expect(deleteListing(actorFor(stranger.id), listing.id)).rejects.toBeInstanceOf(
         NotFound,
       );
+    }));
+});
+
+describe('listing change rate limit', () => {
+  it('shares 5 status changes and deletes an hour, then refuses without deleting', () =>
+    withRollback(async () => {
+      const { owner, listing } = await setup({ reviewStatus: 'approved' });
+      for (let i = 0; i < RATE_LIMITS.listingChanges.limit; i++) {
+        const status = i % 2 === 0 ? 'taken' : 'active';
+        await setListingStatus(actorFor(owner.id), { listingId: listing.id, status });
+      }
+      await expectRateLimited(deleteListing(actorFor(owner.id), listing.id), TOO_MANY_CHANGES);
+      expect(await reviewOf(listing.id)).toMatchObject({ status: 'taken' });
+    }));
+
+  it('does not charge an unchanged status or a listing the caller does not own', () =>
+    withRollback(async () => {
+      const { owner, listing } = await setup({ reviewStatus: 'approved' });
+      const stranger = await createUser();
+      for (let i = 0; i <= RATE_LIMITS.listingChanges.limit; i++) {
+        await setListingStatus(actorFor(owner.id), { listingId: listing.id, status: 'active' });
+        await expect(deleteListing(actorFor(stranger.id), listing.id)).rejects.toBeInstanceOf(
+          NotFound,
+        );
+      }
+      await setListingStatus(actorFor(owner.id), { listingId: listing.id, status: 'taken' });
+      expect(await reviewOf(listing.id)).toMatchObject({ status: 'taken' });
     }));
 });

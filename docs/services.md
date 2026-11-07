@@ -30,6 +30,11 @@ Webhook-driven functions (`syncUserFromClerk`, `deleteUserFromClerk`), `ensureUs
   `admin-reports` (queue, report view, resolve), `admin-conversations` (logged read-only thread),
   `admin-stats` (trial stats). See `admin.md`.
 - `locks`: `lockMessagingUsers`, sorted advisory locks shared by messaging, blocks, and ban.
+- `rate-limit`: `consume`, `RATE_LIMITS`, `rateLimitSubject`, `purgeExpiredRateLimits`; fixed-window
+  counters consumed first by `requestPhotoUploads`, `setFavorite`, `loadMoreListings`,
+  `listEarlierMessages`, `blockUser`, `unblockUser`, `setListingStatus`, `deleteListing`, and
+  `completeOnboarding`. See `rate-limits.md`.
+- `pg-errors`: `hasPgCode`, which matches a Postgres error code through wrapped causes.
 - `best-effort`: `bestEffort`, post-commit cleanup that reports failures to Sentry.
 - `storage-cleanup`: `sweepStaleStorage`, the daily sweep of stale uploads and unreferenced photos
   (no actor; called only from the cron route). See `storage.md`.

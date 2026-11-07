@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { db } from '@/server/db/client';
 import { blocks } from '@/server/db/schema';
 import { ANONYMOUS } from '@/server/services/actor';
-import { Forbidden, NotFound } from '@/server/services/errors';
+import { Forbidden, NotFound, ValidationError } from '@/server/services/errors';
 import {
   blockUser,
   getBlockState,
@@ -12,6 +12,8 @@ import {
 } from '@/server/services/moderation';
 import { withRollback } from '../helpers/db';
 import { actorFor, createUser } from '../helpers/fixtures';
+import { RATE_LIMITS } from '@/server/services/rate-limit';
+import { expectRateLimited, TOO_MANY_CHANGES } from '../helpers/rate-limit';
 
 describe('moderation', () => {
   it('blocks and unblocks idempotently', () =>
@@ -99,5 +101,32 @@ describe('moderation', () => {
         [older.id, 'Older O.'],
       ]);
       expect(list[0]?.blockedAt).toBeInstanceOf(Date);
+    }));
+});
+
+describe('block rate limit', () => {
+  it('shares 10 blocks and unblocks an hour, then refuses without blocking', () =>
+    withRollback(async () => {
+      const me = await createUser();
+      const other = await createUser();
+      for (let i = 0; i < RATE_LIMITS.blocks.limit; i++) {
+        const call = i % 2 === 0 ? blockUser : unblockUser;
+        await call(actorFor(me.id), { userId: other.id });
+      }
+      await expectRateLimited(blockUser(actorFor(me.id), { userId: other.id }), TOO_MANY_CHANGES);
+      await expectRateLimited(unblockUser(actorFor(me.id), { userId: other.id }));
+      expect(await db().select().from(blocks).where(eq(blocks.blockerId, me.id))).toHaveLength(0);
+    }));
+
+  it('does not charge a refused self-block', () =>
+    withRollback(async () => {
+      const me = await createUser();
+      const other = await createUser();
+      for (let i = 0; i <= RATE_LIMITS.blocks.limit; i++) {
+        await expect(blockUser(actorFor(me.id), { userId: me.id })).rejects.toBeInstanceOf(
+          ValidationError,
+        );
+      }
+      await blockUser(actorFor(me.id), { userId: other.id });
     }));
 });

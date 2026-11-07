@@ -27,12 +27,16 @@ in the school band (`school-switcher.tsx`) that navigates to `/<slug>` with filt
 - **Load more** calls `loadMoreListingsAction` with the canonical query string and an offset. It
   is not in the URL. Offsets use a stable tiebreak (`created_at desc, id`); the client skips
   cards it already shows. A rejected action (network failure) shows the same inline error as a
-  failed result.
+  failed result. It goes through `loadMoreListings`, limited to 20 per minute per user, or 120 per
+  minute per IP when signed out (see `rate-limits.md`); the server-rendered first page is never
+  limited.
 - **Restoring loaded cards** (`browse-results.tsx`): after each "Load more" the card count and
   list height are saved in `sessionStorage` under `browse-loaded:<schoolId>:<query>`. When the
   results mount with a remembered count above the first page (Back from a listing, or a reload),
-  they fetch the missing pages through the same action, stopping at the remembered count, at the
-  end of the results, or on a failed or empty page, then save the count actually shown. The
+  they fetch the missing cards through the same action in one request (`limit` = the remembered
+  count minus the first page, at most `MAX_LOAD_CARDS`, ten pages), so a return costs one
+  rate-limit unit; on a failure they keep the first page. Then they save the count actually
+  shown. The
   remembered height is reserved as a `min-height` before the fetch so the browser's own scroll
   restoration on Back lands at the old position; no scroll code is involved. On a reload the
   cards come back but the scroll position may not. Blocked storage means no restore.

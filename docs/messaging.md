@@ -64,6 +64,7 @@ never told they were blocked: they see the generic `cannot_reply` text.
     fast — wait a minute".
   - 15 new conversations per renter per 24 hours: "You can start up to 15 new conversations a
     day — try again tomorrow". Only creating a conversation counts; replying never does.
+  - 15 "load earlier messages" calls per user per minute (fixed window; see `rate-limits.md`).
 - **Limit-check order and locking:** each send or start runs in one transaction that first takes a
   per-sender advisory lock (`pg_advisory_xact_lock(hashtext('messaging:' || userId))`), so
   concurrent sends cannot both pass the check. `markConversationRead` takes no lock. Permission

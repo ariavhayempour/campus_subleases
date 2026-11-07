@@ -48,4 +48,5 @@ components/ui/       shadcn/ui components (generated; edit freely)
 - Validation: Zod. Monitoring: Sentry. Tests: Vitest (services, real local Postgres) and Playwright
 
 See also: `listings.md`, `search.md`, `messaging.md`, `storage.md`, `database.md`, `services.md`,
-`auth.md`, `testing.md`, `environment.md`, `site-pages.md`, `moderation.md`, `admin.md`.
+`auth.md`, `testing.md`, `environment.md`, `site-pages.md`, `moderation.md`, `admin.md`,
+`rate-limits.md`.

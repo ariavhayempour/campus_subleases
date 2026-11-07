@@ -90,3 +90,11 @@ are no usernames, and email lives only in Clerk. `first_name`/`last_name` are nu
 allows users without names, e.g. created from the dashboard). `display_name` is never edited
 directly: `syncUserFromClerk` and `ensureUser` derive it with `formatDisplayName`
 (`lib/display-name.ts`) as "First L." so the full last name is never shown to other users.
+
+## Rate-limit counters
+
+`rate_limit_counters` (`key`, `window_start`, `count`; primary key `(key, window_start)`; RLS
+enabled, no policies) holds the fixed-window counters behind `server/services/rate-limit.ts`.
+Keys are `<rule name>:<user id>` or `<rule name>:ip:<address>`. Migration
+`0012_rate-limit-counters.sql`. The daily cleanup cron deletes rows older than 24 hours. See
+`rate-limits.md`.

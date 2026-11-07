@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { PAGE_SIZE } from '@/lib/search-options';
+import { MAX_LOAD_CARDS, PAGE_SIZE } from '@/lib/search-options';
 import type { SearchFilters } from '@/lib/validation/search';
 import { db } from '@/server/db/client';
 import { blocks, favorites, listings } from '@/server/db/schema';
@@ -16,6 +16,9 @@ import {
   insertPhoto,
   listingValues,
 } from '../helpers/fixtures';
+import { RATE_LIMITS } from '@/server/services/rate-limit';
+import { loadMoreListings } from '@/server/services/search';
+import { expectRateLimited } from '../helpers/rate-limit';
 
 const live = { reviewStatus: 'approved' } as const;
 
@@ -463,4 +466,69 @@ describe('input validation', () => {
       }),
     ).rejects.toBeInstanceOf(ValidationError);
   });
+});
+
+describe('loadMoreListings', () => {
+  it('allows 20 pages a minute per user, then refuses', () =>
+    withRollback(async () => {
+      const school = await createSchool();
+      const me = actorFor((await createUser()).id);
+      const input = { schoolId: school.id, filters: {}, offset: PAGE_SIZE };
+      for (let i = 0; i < RATE_LIMITS.loadMore.limit; i++) await loadMoreListings(me, input);
+      await expectRateLimited(loadMoreListings(me, input));
+    }));
+
+  it('gives signed-out callers a higher limit per IP, since many share one campus address', () =>
+    withRollback(async () => {
+      const school = await createSchool();
+      const input = { schoolId: school.id, filters: {}, offset: PAGE_SIZE };
+      const a: Actor = { kind: 'anonymous', ip: '203.0.113.1' };
+      const b: Actor = { kind: 'anonymous', ip: '203.0.113.2' };
+      for (let i = 0; i < RATE_LIMITS.loadMoreSignedOut.limit; i++) {
+        await loadMoreListings(a, input);
+      }
+      await expectRateLimited(loadMoreListings(a, input));
+      await expect(loadMoreListings(b, input)).resolves.toMatchObject({ cards: [] });
+    }));
+
+  it('restores several remembered pages in one call that counts once', () =>
+    withRollback(async () => {
+      const owner = await createUser();
+      const school = await createSchool();
+      await db()
+        .insert(listings)
+        .values(
+          Array.from({ length: PAGE_SIZE * 2 + 3 }, (_, i) =>
+            listingValues(owner.id, school.id, { ...live, title: `Restored ${i}` }),
+          ),
+        );
+      const me = actorFor((await createUser()).id);
+      const input = { schoolId: school.id, filters: {}, offset: PAGE_SIZE };
+      const page = await loadMoreListings(me, { ...input, limit: PAGE_SIZE + 3 });
+      expect(page.cards).toHaveLength(PAGE_SIZE + 3);
+      expect(page.nextOffset).toBeNull();
+      for (let i = 1; i < RATE_LIMITS.loadMore.limit; i++) await loadMoreListings(me, input);
+      await expectRateLimited(loadMoreListings(me, input));
+    }));
+
+  it('refuses a restore larger than ten pages', () =>
+    withRollback(async () => {
+      const school = await createSchool();
+      const me = actorFor((await createUser()).id);
+      await expect(
+        loadMoreListings(me, { schoolId: school.id, filters: {}, limit: MAX_LOAD_CARDS + 1 }),
+      ).rejects.toBeInstanceOf(ValidationError);
+    }));
+
+  it('does not charge a request with invalid input', () =>
+    withRollback(async () => {
+      const school = await createSchool();
+      const me = actorFor((await createUser()).id);
+      for (let i = 0; i <= RATE_LIMITS.loadMore.limit; i++) {
+        await expect(
+          loadMoreListings(me, { schoolId: 'not-a-uuid', filters: {} }),
+        ).rejects.toBeInstanceOf(ValidationError);
+      }
+      await loadMoreListings(me, { schoolId: school.id, filters: {} });
+    }));
 });

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { FILTERABLE_AMENITIES, GENDER_PREFERENCES, LISTING_TYPES } from '@/lib/listing-options';
-import { MAX_BEDROOM_OPTION, SORTS, type Sort } from '@/lib/search-options';
+import {
+  MAX_BEDROOM_OPTION,
+  MAX_LOAD_CARDS,
+  PAGE_SIZE,
+  SORTS,
+  type Sort,
+} from '@/lib/search-options';
 
 export type Bounds = { west: number; south: number; east: number; north: number };
 export type RawSearchParams = Record<string, string | string[] | undefined>;
@@ -71,6 +77,7 @@ export const searchRequestSchema = z.object({
   schoolId: z.uuid(),
   filters: searchFiltersSchema,
   offset: z.number().int().min(0).max(10_000).default(0),
+  limit: z.number().int().min(1).max(MAX_LOAD_CARDS).default(PAGE_SIZE),
 });
 
 const first = (value: string | string[] | undefined): string | undefined =>

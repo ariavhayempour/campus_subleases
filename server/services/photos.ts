@@ -6,16 +6,16 @@ import {
   BUCKETS,
   createSignedUploadUrl,
   downloadObject,
-  listObjects,
   objectExists,
   publicObjectUrl,
   removeObjects,
   uploadObject,
 } from '@/server/storage/client';
 import { requireUser, type Actor } from './actor';
-import { parseInput, RateLimited, ValidationError } from './errors';
+import { parseInput, ValidationError } from './errors';
+import { consume, RATE_LIMITS } from './rate-limit';
 
-export const PHOTO_UPLOADS_PER_HOUR = 20;
+export const PHOTO_UPLOADS_PER_HOUR = RATE_LIMITS.photoUploads.limit;
 
 export type PhotoUploadTarget = { path: string; signedUrl: string };
 export type PhotoUrls = { thumb: string; gallery: string };
@@ -26,7 +26,6 @@ const EXTENSIONS: Record<PhotoContentType, string> = {
   'image/webp': 'webp',
 };
 const ACCEPTED_FORMATS = new Set(['jpeg', 'png', 'webp']);
-const HOUR_MS = 60 * 60 * 1000;
 // Guards against decompression bombs: a tiny file can declare an enormous canvas.
 export const MAX_PHOTO_PIXELS = 40_000_000;
 
@@ -39,14 +38,8 @@ export async function requestPhotoUploads(
 ): Promise<PhotoUploadTarget[]> {
   const user = requireUser(actor);
   const { files } = parseInput(photoUploadRequestSchema, input);
+  await consume(RATE_LIMITS.photoUploads, user.userId, { cost: files.length });
   const prefix = `listings/${user.userId}`;
-  const since = Date.now() - HOUR_MS;
-  const recent = (await listObjects(BUCKETS.uploads, prefix)).filter(
-    (object) => object.createdAt.getTime() > since,
-  ).length;
-  if (recent + files.length > PHOTO_UPLOADS_PER_HOUR) {
-    throw new RateLimited('Too many photo uploads — try again in an hour');
-  }
   return Promise.all(
     files.map(async (file) => {
       const path = `${prefix}/${randomUUID()}.${EXTENSIONS[file.contentType]}`;

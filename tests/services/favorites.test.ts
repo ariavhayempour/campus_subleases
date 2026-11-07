@@ -8,6 +8,8 @@ import { listFavorites, setFavorite } from '@/server/services/favorites';
 import { getListingDetail } from '@/server/services/listing-reads';
 import { withRollback } from '../helpers/db';
 import { actorFor, createSchool, createUser, insertListing } from '../helpers/fixtures';
+import { RATE_LIMITS } from '@/server/services/rate-limit';
+import { expectRateLimited, TOO_FAST } from '../helpers/rate-limit';
 
 const live = { reviewStatus: 'approved' } as const;
 
@@ -116,5 +118,21 @@ describe('getListingDetail isFavorited', () => {
       await setFavorite(me, { listingId: listing.id, favorited: true });
       expect((await getListingDetail(me, listing.id)).isFavorited).toBe(true);
       expect((await getListingDetail(ANONYMOUS, listing.id)).isFavorited).toBe(false);
+    }));
+});
+
+describe('setFavorite rate limit', () => {
+  it('allows 20 toggles a minute, then refuses without changing the favorite', () =>
+    withRollback(async () => {
+      const { listing } = await liveListing();
+      const me = actorFor((await createUser()).id);
+      for (let i = 0; i < RATE_LIMITS.favorites.limit; i++) {
+        await setFavorite(me, { listingId: listing.id, favorited: i % 2 === 0 });
+      }
+      await expectRateLimited(
+        setFavorite(me, { listingId: listing.id, favorited: true }),
+        TOO_FAST,
+      );
+      expect((await getListingDetail(me, listing.id)).isFavorited).toBe(false);
     }));
 });

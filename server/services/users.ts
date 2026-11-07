@@ -6,6 +6,7 @@ import { onboardingSchema } from '@/lib/validation/onboarding';
 import { requireUser, type Actor, type UserActor } from './actor';
 import { bestEffort } from './best-effort';
 import { parseInput, ValidationError } from './errors';
+import { consume, RATE_LIMITS } from './rate-limit';
 import { deleteProcessedPhotos } from './photos';
 
 export type UserRow = typeof users.$inferSelect;
@@ -85,6 +86,7 @@ export async function completeOnboarding(
 ): Promise<{ schoolSlug: string }> {
   const user = requireUser(actor);
   const data = parseInput(onboardingSchema, input);
+  await consume(RATE_LIMITS.onboarding, user.userId);
   const [school] = await db()
     .select({ id: schools.id, slug: schools.slug })
     .from(schools)
