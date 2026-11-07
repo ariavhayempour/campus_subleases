@@ -14,7 +14,7 @@ only; no landlords or property managers. Admins (the owner) review every listing
 
 ## Product Purpose
 
-Campus Subleases (campussubleases.com) is a free, website-only marketplace where a student posts
+Student Subleases (studentsubleases.com) is a free, website-only marketplace where a student posts
 their place and another student finds it, messages the host in-app, and arranges the sublet.
 Success per school: listings posted, share of approved listings that get a message, median time to
 the host's first reply, listings marked taken.
@@ -59,7 +59,7 @@ escrow.
 
 ## Brand Commitments
 
-- The name is "Campus Subleases", read from the `APP_NAME` constant, and must not reference any
+- The name is "Student Subleases", read from the `APP_NAME` constant, and must not reference any
   one school.
 - Each school's pages use that school's colors: UW–Madison red and white, Michigan maize and blue,
   UCLA blue and gold. The primary color carries structure (header, key accents) and the secondary

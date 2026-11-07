@@ -2,7 +2,7 @@ import { APP_NAME } from '@/lib/app-config';
 import type { ContactMessage } from '@/lib/validation/contact';
 
 // Public by design: Web3Forms only accepts browser submissions, so the key ships in the page.
-export const WEB3FORMS_ACCESS_KEY = '4e194f06-8d58-4c94-a591-76b5b33da0c9';
+export const WEB3FORMS_ACCESS_KEY = '0f7c3774-a567-4ca9-8852-2ed55e7e6d61';
 
 export const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 

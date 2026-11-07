@@ -1,5 +1,5 @@
 ---
-name: Campus Subleases
+name: Student Subleases
 description: Student-to-student subleases, each school dressed in its own athletic colors.
 colors:
   school: "#15171c"
@@ -152,7 +152,7 @@ components:
     backgroundColor: "{colors.school-deep}"
 ---
 
-# Design System: Campus Subleases
+# Design System: Student Subleases
 
 ## Overview
 
