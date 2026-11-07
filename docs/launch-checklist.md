@@ -74,6 +74,13 @@ here, only variable names.
 - [ ] Token URL-restricted to `studentsubleases.com` and the preview domains. TBD: the exact
       preview domain pattern is not recorded in docs.
 
+## Web3Forms
+
+- [ ] **After** the hCaptcha contact-form code is deployed to production, open the form at
+      app.web3forms.com and enable hCaptcha as its spam protection. Enabling it before the deploy
+      makes Web3Forms reject every message from the old form.
+- [ ] Send one real message from `https://studentsubleases.com/contact` and confirm it arrives.
+
 ## Sentry
 
 - [ ] `NEXT_PUBLIC_SENTRY_DSN` set in Vercel.

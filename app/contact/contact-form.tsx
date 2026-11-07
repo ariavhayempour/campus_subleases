@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { submitContactMessage } from '@/lib/contact';
+import { cooldownRemaining, recordContactSent } from '@/lib/contact-cooldown';
 import {
   CONTACT_MESSAGE_MAX_LENGTH,
   CONTACT_NAME_MAX_LENGTH,
@@ -14,10 +15,21 @@ import {
   type ContactInput,
   type ContactMessage,
 } from '@/lib/validation/contact';
+import { HCaptchaWidget } from './hcaptcha-widget';
+
+function browserStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 export function ContactForm() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [botcheck, setBotcheck] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
   const {
     register,
     handleSubmit,
@@ -31,11 +43,29 @@ export function ContactForm() {
 
   async function onSubmit(values: ContactMessage) {
     // Honeypot: only bots fill the hidden field, so pretend success without sending.
-    const result = botcheck ? { ok: true as const } : await submitContactMessage(values);
+    if (botcheck) {
+      reset();
+      setSentTo(values.email);
+      return;
+    }
+    const storage = browserStorage();
+    if (cooldownRemaining(storage) > 0) {
+      setError('root', { message: 'Please wait a minute before sending another message.' });
+      return;
+    }
+    if (!captchaToken) {
+      setError('root', { message: 'Complete the check above to send your message.' });
+      return;
+    }
+    const result = await submitContactMessage(values, captchaToken);
+    // Tokens are single-use, so every attempt needs a fresh check.
+    setCaptchaToken(null);
+    setCaptchaReset((count) => count + 1);
     if (!result.ok) {
       setError('root', { message: result.message });
       return;
     }
+    recordContactSent(storage);
     reset();
     setSentTo(values.email);
   }
@@ -117,6 +147,7 @@ export function ContactForm() {
         checked={botcheck}
         onChange={(event) => setBotcheck(event.target.checked)}
       />
+      <HCaptchaWidget onToken={setCaptchaToken} resetSignal={captchaReset} />
       {errors.root && (
         <p role="alert" className="text-sm font-medium text-bad">
           {errors.root.message}

@@ -4,6 +4,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   // Listing photos are pre-sized WebP on Supabase's CDN; skip Vercel's optimization quota.
   images: { unoptimized: true },
+  // hCaptcha refuses localhost, so the contact form is tried locally at 127.0.0.1 (dev only).
+  allowedDevOrigins: ['127.0.0.1'],
 };
 
 // Source maps upload only when SENTRY_AUTH_TOKEN is set (Vercel builds); other builds skip it.

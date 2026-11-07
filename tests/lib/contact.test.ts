@@ -42,9 +42,10 @@ describe('contactSchema', () => {
 });
 
 describe('contactPayload', () => {
-  it('sends the access key, a fixed subject, and the visitor fields', () => {
-    expect(contactPayload(message, 'key-123')).toEqual({
+  it('sends the access key, the captcha token, a fixed subject, and the visitor fields', () => {
+    expect(contactPayload(message, 'key-123', 'tok')).toEqual({
       access_key: 'key-123',
+      'h-captcha-response': 'tok',
       subject: `New message from the ${APP_NAME} contact form`,
       from_name: APP_NAME,
       name: 'Ada L.',
@@ -57,18 +58,22 @@ describe('contactPayload', () => {
 describe('submitContactMessage', () => {
   it('posts JSON to Web3Forms and succeeds on success: true', async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse(200, { success: true }));
-    await expect(submitContactMessage(message, 'key-123', fetchImpl)).resolves.toEqual({
+    await expect(submitContactMessage(message, 'tok', 'key-123', fetchImpl)).resolves.toEqual({
       ok: true,
     });
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe(WEB3FORMS_ENDPOINT);
     expect(init?.method).toBe('POST');
-    expect(JSON.parse(String(init?.body))).toMatchObject({ access_key: 'key-123', name: 'Ada L.' });
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      access_key: 'key-123',
+      'h-captcha-response': 'tok',
+      name: 'Ada L.',
+    });
   });
 
   it('refuses without an access key and never calls the network', async () => {
     const fetchImpl = vi.fn<typeof fetch>();
-    const result = await submitContactMessage(message, '', fetchImpl);
+    const result = await submitContactMessage(message, 'tok', '', fetchImpl);
     expect(result).toEqual({ ok: false, message: 'The contact form is not set up yet.' });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -84,7 +89,12 @@ describe('submitContactMessage', () => {
       },
     ];
     for (const respond of cases) {
-      const result = await submitContactMessage(message, 'key-123', vi.fn<typeof fetch>(respond));
+      const result = await submitContactMessage(
+        message,
+        'tok',
+        'key-123',
+        vi.fn<typeof fetch>(respond),
+      );
       expect(result.ok).toBe(false);
     }
   });
@@ -92,6 +102,7 @@ describe('submitContactMessage', () => {
   it('explains a rate limit', async () => {
     const result = await submitContactMessage(
       message,
+      'tok',
       'key-123',
       vi.fn<typeof fetch>(async () => jsonResponse(429, { success: false })),
     );

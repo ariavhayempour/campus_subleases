@@ -88,6 +88,10 @@ export default function PrivacyPage() {
         </li>
         <li>Sentry: error reports.</li>
         <li>Web3Forms: delivers contact form messages to us by email.</li>
+        <li>
+          hCaptcha: the check on the contact form, which tells people from bots. It runs only on the
+          contact page.
+        </li>
       </ul>
 
       <h2>Deleting your account</h2>
