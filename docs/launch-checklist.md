@@ -71,8 +71,15 @@ here, only variable names.
 
 ## Mapbox
 
-- [ ] Token URL-restricted to `studentsubleases.com` and the preview domains. TBD: the exact
+- [ ] Decide on a card. URL-restricted tokens need a card on the account. With a card, overage
+      is billed (check Mapbox billing for any spending limit before relying on one); without one, an abuser can only exhaust the free tier
+      and maps go dark until the month resets.
+- [ ] If a card is added: create a public token URL-restricted to `studentsubleases.com` and the
+      preview domains, set it as `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel, and redeploy. TBD: the exact
       preview domain pattern is not recorded in docs.
+- [ ] If the token is ever abused: Mapbox → Tokens → rotate (or delete and recreate) it, update
+      `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel (Production and Preview), and redeploy. The old token
+      is in every cached page, so it must be revoked, not just replaced.
 
 ## Web3Forms
 
