@@ -1,5 +1,6 @@
 'use client';
 
+import { actionErrorMessage, GENERIC_FAILURE } from '@/app/_lib/action-message';
 import { useState, useTransition } from 'react';
 import { unblockUserAction } from '../actions';
 import { useRefreshAfter } from './use-refresh-after';
@@ -7,13 +8,13 @@ import { useRefreshAfter } from './use-refresh-after';
 export function UnblockNotice({ otherUserId }: { otherUserId: string }) {
   const refreshAfter = useRefreshAfter();
   const [pending, startTransition] = useTransition();
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function unblock() {
-    setFailed(false);
+    setError(null);
     startTransition(async () => {
       const result = await refreshAfter(() => unblockUserAction(otherUserId)).catch(() => null);
-      if (!result?.ok) setFailed(true);
+      if (!result?.ok) setError(actionErrorMessage(result, GENERIC_FAILURE));
     });
   }
 
@@ -28,9 +29,9 @@ export function UnblockNotice({ otherUserId }: { otherUserId: string }) {
       >
         Unblock
       </button>
-      {failed && (
+      {error && (
         <p role="alert" className="w-full text-xs text-bad">
-          Something went wrong. Try again.
+          {error}
         </p>
       )}
     </div>

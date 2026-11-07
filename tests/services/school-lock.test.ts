@@ -31,6 +31,14 @@ describe('students outside the listing school', () => {
       );
     }));
 
+  it('sees the host only from the listing school or as an admin', () =>
+    withRollback(async () => {
+      const { listing, student, local } = await setup();
+      expect((await getListingDetail(actorFor(student.id), listing.id)).host).toBeNull();
+      expect((await getListingDetail(actorFor(local.id), listing.id)).host).not.toBeNull();
+      expect((await getListingDetail(actorFor(student.id, true), listing.id)).host).not.toBeNull();
+    }));
+
   it('cannot message, save, or report', () =>
     withRollback(async () => {
       const { listing, student } = await setup();

@@ -1,5 +1,5 @@
 import { and, arrayContains, asc, desc, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm';
-import { MAX_BEDROOM_OPTION, MAX_MAP_PINS, PAGE_SIZE } from '@/lib/search-options';
+import { MAX_BEDROOM_OPTION, MAX_MAP_PINS } from '@/lib/search-options';
 import type { LngLat } from '@/lib/validation/listing';
 import { effectiveSort, searchRequestSchema, type SearchFilters } from '@/lib/validation/search';
 import { db } from '@/server/db/client';
@@ -15,6 +15,7 @@ import {
 } from './listing-cards';
 import { isPublicListing, noBlockWith } from './listing-sql';
 import { photoUrls } from './photos';
+import { consume, RATE_LIMITS, rateLimitSubject } from './rate-limit';
 
 export type SearchPage = { cards: ListingCard[]; total: number; nextOffset: number | null };
 export type MapPin = {
@@ -109,11 +110,18 @@ function orderBy(filters: SearchFilters): SQL[] {
   }
 }
 
-export async function searchListings(
-  actor: Actor,
-  input: { schoolId: string; filters: SearchFilters; offset?: number },
-): Promise<SearchPage> {
-  const { schoolId, filters, offset } = parseInput(searchRequestSchema, input);
+type SearchInput = { schoolId: string; filters: SearchFilters; offset?: number; limit?: number };
+
+// Only the client-driven next-page path is limited; the server-rendered first page is not.
+export async function loadMoreListings(actor: Actor, input: SearchInput): Promise<SearchPage> {
+  const parsed = parseInput(searchRequestSchema, input);
+  const rule = actor.kind === 'user' ? RATE_LIMITS.loadMore : RATE_LIMITS.loadMoreSignedOut;
+  await consume(rule, rateLimitSubject(actor));
+  return searchListings(actor, parsed);
+}
+
+export async function searchListings(actor: Actor, input: SearchInput): Promise<SearchPage> {
+  const { schoolId, filters, offset, limit } = parseInput(searchRequestSchema, input);
   const rows = await db()
     .select({
       ...CARD_COLUMNS,
@@ -126,7 +134,7 @@ export async function searchListings(
     .leftJoin(listingPhotos, coverJoin)
     .where(whereClause(actor, schoolId, filters))
     .orderBy(...orderBy(filters))
-    .limit(PAGE_SIZE)
+    .limit(limit)
     .offset(offset);
   const total = rows[0]?.total ?? 0;
   const end = offset + rows.length;

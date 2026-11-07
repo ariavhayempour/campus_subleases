@@ -19,6 +19,7 @@ const EXPECTED_TABLES = [
   'listing_photos',
   'listings',
   'messages',
+  'rate_limit_counters',
   'reports',
   'schools',
   'users',

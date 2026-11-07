@@ -19,7 +19,7 @@ through refetch on focus). Adding a variable needs owner approval.
 The pre-launch settings for every service are in `launch-checklist.md`.
 Locally, `NEXT_PUBLIC_MAPBOX_TOKEN` is the Mapbox default public token (no URL restriction, since
 new tokens need a card on the account). Follow-up: create URL-restricted tokens for preview and
-production.
+production (see the Mapbox section of `launch-checklist.md` for the card trade-off).
 
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` (public / secret): Clerk
 - `CLERK_WEBHOOK_SIGNING_SECRET` (secret): `/api/webhooks/clerk`

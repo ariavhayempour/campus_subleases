@@ -27,6 +27,7 @@ import {
   RateLimited,
   ValidationError,
 } from './errors';
+import { consume, RATE_LIMITS } from './rate-limit';
 import { countsTowardCap, schoolToday } from './listing-sql';
 import {
   deleteProcessedPhotos,
@@ -350,6 +351,9 @@ export async function updateListing(
 export async function setListingStatus(actor: Actor, input: unknown): Promise<void> {
   const user = requireUser(actor);
   const { listingId, status } = parseInput(listingStatusInputSchema, input);
+  // Refusals and no-ops are settled before charging; the locked re-check below stays authoritative.
+  if ((await loadOwnedListing(user.userId, listingId)).status === status) return;
+  await consume(RATE_LIMITS.listingChanges, user.userId);
   await db().transaction(async (tx) => {
     await lockOwner(tx, user.userId);
     const [row] = await tx
@@ -381,6 +385,7 @@ export async function deleteListingRow(tx: DbExecutor, listingId: string): Promi
 export async function deleteListing(actor: Actor, listingId: string): Promise<void> {
   const user = requireUser(actor);
   await loadOwnedListing(user.userId, listingId);
+  await consume(RATE_LIMITS.listingChanges, user.userId);
   const photoPaths = await db().transaction((tx) => deleteListingRow(tx, listingId));
   await bestEffort(() => deleteProcessedPhotos(photoPaths));
 }

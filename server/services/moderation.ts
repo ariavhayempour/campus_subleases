@@ -5,6 +5,8 @@ import { blocks, users } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound, parseInput, ValidationError } from './errors';
 import { lockMessagingUsers } from './locks';
+import { hasPgCode } from './pg-errors';
+import { consume, RATE_LIMITS } from './rate-limit';
 
 export type BlockState = { viewerBlocked: boolean; blockedByOther: boolean };
 
@@ -14,6 +16,7 @@ export async function blockUser(actor: Actor, input: unknown): Promise<void> {
   if (userId === user.userId) {
     throw new ValidationError({ userId: ["You can't block yourself"] });
   }
+  await consume(RATE_LIMITS.blocks, user.userId);
   try {
     await db().transaction(async (tx) => {
       await lockMessagingUsers(tx, [user.userId, userId]);
@@ -28,19 +31,10 @@ export async function blockUser(actor: Actor, input: unknown): Promise<void> {
   }
 }
 
-// Drivers may wrap the Postgres error, so walk the cause chain.
-function hasPgCode(error: unknown, code: string): boolean {
-  let current: unknown = error;
-  for (let depth = 0; current && typeof current === 'object' && depth < 5; depth += 1) {
-    if ((current as { code?: unknown }).code === code) return true;
-    current = (current as { cause?: unknown }).cause;
-  }
-  return false;
-}
-
 export async function unblockUser(actor: Actor, input: unknown): Promise<void> {
   const user = requireUser(actor);
   const { userId } = parseInput(blockInputSchema, input);
+  await consume(RATE_LIMITS.blocks, user.userId);
   await db()
     .delete(blocks)
     .where(and(eq(blocks.blockerId, user.userId), eq(blocks.blockedId, userId)));

@@ -58,12 +58,26 @@ access key. No server code, dependency, or environment variable is involved.
 - **Validation:** `lib/validation/contact.ts` (name 1–100, email, message 10–5,000; all
   trimmed),
   used by the form through `zodResolver`.
-- **Payload:** `access_key`, a fixed `subject` and `from_name` naming `APP_NAME`, and the visitor's
-  `name`, `email` (Web3Forms uses it as reply-to), and `message`.
-- **Spam:** a hidden `botcheck` checkbox. If it is ticked, the form shows success without sending.
+- **Payload:** `access_key`, `h-captcha-response`, a fixed `subject` and `from_name` naming
+  `APP_NAME`, and the visitor's `name`, `email` (Web3Forms uses it as reply-to), and `message`.
+- **Spam:**
+  - **hCaptcha** (`app/contact/hcaptcha-widget.tsx`): loaded from `js.hcaptcha.com` with
+    `render=explicit&onload=onHCaptchaLoad` (no npm package) and rendered with Web3Forms' free
+    sitekey (`HCAPTCHA_SITEKEY`). Web3Forms verifies the token only once hCaptcha is enabled for
+    the form in its dashboard (see `launch-checklist.md`). Tokens are single-use: the widget resets
+    after every send attempt. Sending without a token shows "Complete the check above to send your
+    message."
+  - **Cooldown** (`lib/contact-cooldown.ts`): after a successful send, another send within 60
+    seconds shows "Please wait a minute before sending another message." It lives in
+    `localStorage`, so it only deters casual resubmits; with storage unavailable there is none.
+  - **Honeypot:** a hidden `botcheck` checkbox. If it is ticked, the form shows success without
+    sending.
+- **Local development:** hCaptcha refuses `localhost`. To try the real form, open
+  `http://127.0.0.1:3000/contact` (`next.config.ts` allows that dev origin). E2E stubs the
+  hCaptcha script instead.
 - **Failures:** network errors, HTTP 429, non-JSON responses, and `success: false` all show an
   inline error; the form keeps what was typed.
-- **Privacy:** Web3Forms is listed as a provider in the Privacy Policy.
+- **Privacy:** Web3Forms and hCaptcha are listed as providers in the Privacy Policy.
 - **Abuse reports** go through the in-app Report options, not this form; the page says so.
 
 ## robots.txt and sitemap.xml
@@ -95,7 +109,10 @@ non-production branch, Vercel omits that header and staging must add its own `no
 - `tests/app/robots-sitemap.test.ts`: blocked and allowed paths (with a small robots matcher) and
   the sitemap against the seeded schools.
 - `e2e/static-pages.spec.ts`: pages and footer links, robots/sitemap over HTTP, and the contact
-  form with the Web3Forms request intercepted (no real email is sent).
+  form with the Web3Forms request intercepted (no real email is sent) and the hCaptcha script
+  stubbed: token in the payload, a fresh token after a failed send, the cooldown, and the
+  unsolved check.
+- `tests/lib/contact-cooldown.test.ts`: the cooldown countdown and unavailable storage.
 
 ## Landing page (`/`)
 

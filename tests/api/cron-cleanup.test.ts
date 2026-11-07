@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from '@/app/api/cron/cleanup/route';
+import { purgeExpiredRateLimits } from '@/server/services/rate-limit';
 import { sweepStaleStorage } from '@/server/services/storage-cleanup';
 
 vi.mock('@/server/services/storage-cleanup', () => ({
   sweepStaleStorage: vi.fn(),
+}));
+vi.mock('@/server/services/rate-limit', () => ({
+  purgeExpiredRateLimits: vi.fn(),
 }));
 
 const url = 'http://localhost:3000/api/cron/cleanup';
@@ -12,6 +16,8 @@ const request = (headers: Record<string, string> = {}): Request => new Request(u
 beforeEach(() => {
   vi.mocked(sweepStaleStorage).mockReset();
   vi.mocked(sweepStaleStorage).mockResolvedValue({ uploadsRemoved: 1, photosRemoved: 2 });
+  vi.mocked(purgeExpiredRateLimits).mockReset();
+  vi.mocked(purgeExpiredRateLimits).mockResolvedValue(3);
 });
 
 afterEach(() => {
@@ -25,6 +31,7 @@ describe('GET /api/cron/cleanup', () => {
     expect(response.status).toBe(401);
     expect(response.headers.get('content-type')).toContain('text/plain');
     expect(sweepStaleStorage).not.toHaveBeenCalled();
+    expect(purgeExpiredRateLimits).not.toHaveBeenCalled();
   });
 
   it('rejects a wrong secret', async () => {
@@ -32,6 +39,7 @@ describe('GET /api/cron/cleanup', () => {
     const response = await GET(request({ authorization: 'Bearer wrong-secret' }));
     expect(response.status).toBe(401);
     expect(sweepStaleStorage).not.toHaveBeenCalled();
+    expect(purgeExpiredRateLimits).not.toHaveBeenCalled();
   });
 
   it('rejects every request when CRON_SECRET is unset', async () => {
@@ -39,6 +47,7 @@ describe('GET /api/cron/cleanup', () => {
     const response = await GET(request({ authorization: 'Bearer undefined' }));
     expect(response.status).toBe(401);
     expect(sweepStaleStorage).not.toHaveBeenCalled();
+    expect(purgeExpiredRateLimits).not.toHaveBeenCalled();
   });
 
   it('sweeps and returns the counts for the correct secret', async () => {
@@ -46,7 +55,21 @@ describe('GET /api/cron/cleanup', () => {
     const response = await GET(request({ authorization: 'Bearer cron-test-secret' }));
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/json');
-    expect(await response.json()).toEqual({ uploadsRemoved: 1, photosRemoved: 2 });
+    expect(await response.json()).toEqual({
+      uploadsRemoved: 1,
+      photosRemoved: 2,
+      rateLimitRowsDeleted: 3,
+    });
     expect(sweepStaleStorage).toHaveBeenCalledWith();
+    expect(purgeExpiredRateLimits).toHaveBeenCalledOnce();
+  });
+
+  it('still purges rate-limit counters when the storage sweep fails, then reports the failure', async () => {
+    vi.stubEnv('CRON_SECRET', 'cron-test-secret');
+    vi.mocked(sweepStaleStorage).mockRejectedValue(new Error('storage down'));
+    await expect(GET(request({ authorization: 'Bearer cron-test-secret' }))).rejects.toThrow(
+      'storage down',
+    );
+    expect(purgeExpiredRateLimits).toHaveBeenCalledOnce();
   });
 });

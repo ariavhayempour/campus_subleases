@@ -20,6 +20,7 @@ import {
 } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound, parseInput, ValidationError } from './errors';
+import { consume, RATE_LIMITS } from './rate-limit';
 import { coverJoin } from './listing-cards';
 import { isPublicListing, noBlockWith } from './listing-sql';
 import { composerStateWithBlock, toMessageView } from './messaging';
@@ -274,6 +275,7 @@ export async function listEarlierMessages(
     if (error instanceof ValidationError) throw conversationNotFound();
     throw error;
   }
+  await consume(RATE_LIMITS.earlierMessages, user.userId);
   const [conversation] = await db()
     .select({ id: conversations.id })
     .from(conversations)

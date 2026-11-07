@@ -1,4 +1,6 @@
 export const PAGE_SIZE = 24;
+// Restoring after Back fetches every remembered page in one request, up to ten pages.
+export const MAX_LOAD_CARDS = PAGE_SIZE * 10;
 export const MAX_MAP_PINS = 500;
 
 export const SORTS = ['newest', 'rent_asc', 'rent_desc', 'distance', 'relevance'] as const;

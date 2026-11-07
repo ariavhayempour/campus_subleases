@@ -1,5 +1,6 @@
 'use client';
 
+import { actionErrorMessage, GENERIC_FAILURE } from '@/app/_lib/action-message';
 import { Ban, Flag, MoreHorizontal, UserCheck } from 'lucide-react';
 import { useRef, useState, useTransition } from 'react';
 import { ReportDialog } from '@/app/_components/report-dialog';
@@ -15,18 +16,18 @@ type ThreadMenuProps = {
 export function ThreadMenu({ otherUserId, otherName, blocked }: ThreadMenuProps) {
   const refreshAfter = useRefreshAfter();
   const [pending, startTransition] = useTransition();
-  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
   const menu = useRef<HTMLDetailsElement>(null);
   const summary = useRef<HTMLElement>(null);
 
   function run() {
-    setFailed(false);
+    setError(null);
     startTransition(async () => {
       const action = blocked ? unblockUserAction : blockUserAction;
       const result = await refreshAfter(() => action(otherUserId)).catch(() => null);
       if (result?.ok) menu.current?.removeAttribute('open');
-      else setFailed(true);
+      else setError(actionErrorMessage(result, GENERIC_FAILURE));
     });
   }
 
@@ -65,9 +66,9 @@ export function ThreadMenu({ otherUserId, otherName, blocked }: ThreadMenuProps)
             <Flag aria-hidden="true" className="size-4" />
             Report user
           </button>
-          {failed && (
+          {error && (
             <p role="alert" className="px-2.5 py-1 text-xs text-bad">
-              Something went wrong. Try again.
+              {error}
             </p>
           )}
         </div>

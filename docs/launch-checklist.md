@@ -31,12 +31,18 @@ here, only variable names.
 - [ ] `CRON_SECRET` set. After the first production deploy, the cron for `/api/cron/cleanup`
       (daily) is visible under Project, Cron Jobs.
 - [ ] `SENTRY_AUTH_TOKEN` set (Production and Preview).
+- [x] Firewall rule `Per-IP rate limit` (300 requests / 60 s per IP, not `/_next/`) published
+      2026-11-06 in **Log** mode (see `rate-limits.md`).
+- [ ] After a few days of traffic, review the rule's traffic in Firewall. If normal visitors
+      never reach 300/min, switch it to the default 429 action: Firewall → Configure → edit the
+      rule → If exceeded: Default (429) → Save → Review Changes → Publish. If real users hit it,
+      raise the limit instead.
 
 ## Clerk production instance
 
 - [ ] Email + password sign-up; first and last name required; no usernames.
 - [ ] Email verification code required.
-- [ ] Bot protection on.
+- [ ] Bot protection on (sign-up CAPTCHA), so scripted sign-ups can't burn monthly active users.
 - [ ] Owner has `publicMetadata.role = "admin"`.
 - [ ] Webhook endpoint `https://studentsubleases.com/api/webhooks/clerk` subscribed to
       `user.created`, `user.updated`, `user.deleted`; its signing secret is set as
@@ -65,8 +71,22 @@ here, only variable names.
 
 ## Mapbox
 
-- [ ] Token URL-restricted to `studentsubleases.com` and the preview domains. TBD: the exact
+- [ ] Decide on a card. URL-restricted tokens need a card on the account. With a card, overage
+      is billed (check Mapbox billing for any spending limit before relying on one); without one, an abuser can only exhaust the free tier
+      and maps go dark until the month resets.
+- [ ] If a card is added: create a public token URL-restricted to `studentsubleases.com` and the
+      preview domains, set it as `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel, and redeploy. TBD: the exact
       preview domain pattern is not recorded in docs.
+- [ ] If the token is ever abused: Mapbox → Tokens → rotate (or delete and recreate) it, update
+      `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel (Production and Preview), and redeploy. The old token
+      is in every cached page, so it must be revoked, not just replaced.
+
+## Web3Forms
+
+- [ ] **After** the hCaptcha contact-form code is deployed to production, open the form at
+      app.web3forms.com and enable hCaptcha as its spam protection. Enabling it before the deploy
+      makes Web3Forms reject every message from the old form.
+- [ ] Send one real message from `https://studentsubleases.com/contact` and confirm it arrives.
 
 ## Sentry
 

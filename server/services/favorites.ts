@@ -4,6 +4,7 @@ import { db } from '@/server/db/client';
 import { favorites, listingPhotos, listings, schools, users } from '@/server/db/schema';
 import { requireUser, type Actor } from './actor';
 import { NotFound, parseInput } from './errors';
+import { consume, RATE_LIMITS } from './rate-limit';
 import { CARD_COLUMNS, coverJoin, toListingCard, type ListingCard } from './listing-cards';
 import { isPublicListing, noBlockWith } from './listing-sql';
 import { assertInHomeSchool } from './school-lock';
@@ -13,6 +14,7 @@ const MAX_FAVORITES_SHOWN = 200;
 export async function setFavorite(actor: Actor, input: unknown): Promise<void> {
   const user = requireUser(actor);
   const { listingId, favorited } = parseInput(favoriteInputSchema, input);
+  await consume(RATE_LIMITS.favorites, user.userId);
   if (!favorited) {
     await db()
       .delete(favorites)

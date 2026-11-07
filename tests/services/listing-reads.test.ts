@@ -54,6 +54,7 @@ describe('getListingDetail visibility', () => {
         unit: null,
         isPublic: true,
         viewer: 'visitor',
+        host: null,
       });
       const signedIn = await createUser();
       expect((await getListingDetail(actorFor(signedIn.id), listing.id)).unit).toBeNull();
@@ -149,12 +150,12 @@ describe('getListingDetail visibility', () => {
       const { owner, listing } = await hostWithListing();
       await insertPhoto(listing.id, 1, `${listing.id}/second`);
       await insertPhoto(listing.id, 0, `${listing.id}/cover`);
-      const detail = await getListingDetail(ANONYMOUS, listing.id);
+      const detail = await getListingDetail(actorFor(owner.id), listing.id);
       expect(detail.photos.map((photo) => photo.thumbUrl)).toEqual([
         expect.stringMatching(/\/cover-thumb\.webp$/),
         expect.stringMatching(/\/second-thumb\.webp$/),
       ]);
-      expect(detail.host.displayName).toBe(owner.displayName);
+      expect(detail.host?.displayName).toBe(owner.displayName);
       // Fixture listing (-89.39, 43.07) vs fixture campus (-89.404, 43.0753): about 1.3 km.
       expect(detail.distanceKm).toBeGreaterThan(1);
       expect(detail.distanceKm).toBeLessThan(1.6);

@@ -15,6 +15,8 @@ import {
 } from '@/server/services/users';
 import { withRollback } from '../helpers/db';
 import { createSchool, createUser, insertListing, insertPhoto } from '../helpers/fixtures';
+import { RATE_LIMITS } from '@/server/services/rate-limit';
+import { expectRateLimited } from '../helpers/rate-limit';
 
 vi.mock('@/server/services/photos', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/server/services/photos')>()),
@@ -172,5 +174,17 @@ describe('deleteUserFromClerk photo cleanup', () => {
       expect(deleteProcessedPhotos).toHaveBeenCalledTimes(1);
       const paths = vi.mocked(deleteProcessedPhotos).mock.calls[0][0];
       expect([...paths].sort()).toEqual([`${listing.id}/a`, `${listing.id}/b`]);
+    }));
+});
+
+describe('completeOnboarding rate limit', () => {
+  it('allows 10 submits an hour, then refuses', () =>
+    withRollback(async () => {
+      const user = await createUser();
+      const input = { homeSchoolId: await seededId('umich') };
+      for (let i = 0; i < RATE_LIMITS.onboarding.limit; i++) {
+        await completeOnboarding(actorFor(user.id), input);
+      }
+      await expectRateLimited(completeOnboarding(actorFor(user.id), input));
     }));
 });

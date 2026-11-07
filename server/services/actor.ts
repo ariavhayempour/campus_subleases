@@ -1,7 +1,7 @@
 import { Forbidden } from './errors';
 
 export type UserActor = { kind: 'user'; userId: string; isAdmin: boolean };
-export type Actor = { kind: 'anonymous' } | UserActor;
+export type Actor = { kind: 'anonymous'; ip?: string } | UserActor;
 
 export const ANONYMOUS: Actor = { kind: 'anonymous' };
 

@@ -29,9 +29,8 @@
   (`ListingDetail.crossSchool`) but cannot message, save, or report it; `startConversation`,
   `setFavorite` (saving only) and `createReport` (listings) throw `Forbidden`
   (`server/services/school-lock.ts`). The page hides those actions and says why.
-- **Rate limits:** 5 new listings per rolling 24 h per non-admin (listings table); 20 photo uploads per rolling
-  hour, counted from objects under `listings/{userId}/` in the `uploads` bucket created in the
-  last hour.
+- **Rate limits:** 5 new listings per rolling 24 h per non-admin (listings table); 20 signed photo upload URLs
+  per user per clock hour, counted when issued (`RATE_LIMITS.photoUploads`; see `rate-limits.md`).
 - **Limit-check order:** photo processing (sharp) is the expensive step, and raw uploads survive a
   failed save, so a rejected save could otherwise be replayed to re-run sharp. `createListing`
   pre-checks both the cap and the 5/day limit before processing. `updateListing` pre-checks the
@@ -41,10 +40,8 @@
   saves cannot both pass. Status changes (reactivation) run the same locked check.
 - **Known gap:** the 5/day limit counts surviving rows only, so delete-and-recreate is not
   limited. Known gap, deferred.
-- **Upload limit is best-effort.** It counts stored objects only, so uploads deleted on save,
-  parallel requests, and hoarded unused signed URLs can all bypass it. Bucket size caps and the
-  listing limits still bound the damage. Hardening needs an issuance record (a migration); known
-  gap, deferred.
+- **Upload limit counts issuance.** Every signed URL counts, whether or not it is used, so unused
+  URLs, uploads deleted on save, and parallel requests cannot get around it.
 - **Re-review:** title, description, rent, gender preference, address/city/state/ZIP, location,
   unit, or adding a photo → `pending` (clears `review_note`). Removing or reordering photos,
   dates, rooms, roommates, private bathroom, furnished, amenities, and status changes keep the
@@ -104,6 +101,9 @@ using a browser-side haversine (`lib/geo.ts`). Stored and displayed distances us
 `/me/favorites` (signed in, onboarded; `noindex`).
 The listing page shows **Report listing** to signed-in visitors (not the owner or admins); see
 `moderation.md`.
+The host's name and join date (`host`) are returned only to the owner, admins, and signed-in
+students whose home school is the listing's school; signed-out and other-school visitors get
+`host: null` and see a locked "Student host" placeholder.
 The listing page shows **Message host** to visitors (owners and admins see no button); it becomes
 **View conversation** when `conversationId` is set. `/messages`, `/messages/new?listing=<id>`, and
 `/messages/[id]` are described in `messaging.md`.

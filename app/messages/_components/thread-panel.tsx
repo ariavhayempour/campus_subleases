@@ -1,5 +1,6 @@
 'use client';
 
+import { actionErrorMessage } from '@/app/_lib/action-message';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { useMessaging } from '@/app/_components/messaging-provider';
 import { mergeMessages } from '@/lib/messages';
@@ -16,7 +17,7 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
   const [hasEarlier, setHasEarlier] = useState(thread.hasEarlier);
   const [loadedEarlier, setLoadedEarlier] = useState(false);
   const [seenThread, setSeenThread] = useState(thread);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, startLoading] = useTransition();
   const { refreshUnread, onEvent, onResync } = useMessaging();
 
@@ -98,11 +99,11 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
   function loadEarlier() {
     const oldest = messages[0];
     if (!oldest || !scroller.current) return;
-    setLoadError(false);
+    setLoadError(null);
     startLoading(async () => {
       const result = await loadEarlierMessagesAction(thread.id, oldest.id).catch(() => null);
       if (!result?.ok) {
-        setLoadError(true);
+        setLoadError(actionErrorMessage(result, 'Could not load earlier messages. Try again.'));
         return;
       }
       const el = scroller.current;
@@ -137,7 +138,7 @@ export function ThreadPanel({ thread }: { thread: ThreadView }) {
             </button>
             {loadError && (
               <p role="alert" className="mt-1 text-xs text-bad">
-                Could not load earlier messages. Try again.
+                {loadError}
               </p>
             )}
           </div>

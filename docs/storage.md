@@ -21,7 +21,8 @@ settings.
 
 ## Photo flow
 
-1. `requestPhotoUploads` signs one upload URL per file; the browser PUTs the raw file.
+1. `requestPhotoUploads` signs one upload URL per file (20 per user per hour, counted at
+   issuance); the browser PUTs the raw file.
 2. On save, `processListingUploads` checks every path is under `listings/{actorId}/` and exists,
    checks the real format with `sharp`, and writes a 640×480 thumbnail and a ≤1600px gallery
    image as WebP. `sharp` drops EXIF (including GPS) by default; `rotate()` applies orientation
@@ -44,7 +45,10 @@ quota is used).
 
 ## Cleanup
 
-`GET /api/cron/cleanup` runs `sweepStaleStorage` (`server/services/storage-cleanup.ts`) once a day.
+`GET /api/cron/cleanup` runs `sweepStaleStorage` (`server/services/storage-cleanup.ts`) once a day,
+alongside `purgeExpiredRateLimits` (rate-limit counters older than 24 hours; see `rate-limits.md`).
+Neither failure skips the other; the first failure is rethrown so Sentry sees it.
+It answers `{ uploadsRemoved, photosRemoved, rateLimitRowsDeleted }`.
 `vercel.json` schedules it at `0 9 * * *` (UTC; Hobby crons fire at an imprecise time within that
 hour). Vercel sends `Authorization: Bearer <CRON_SECRET>`; `isCronAuthorized` (`lib/cron-auth.ts`)
 compares it in constant time and the route answers 401 when it does not match or `CRON_SECRET` is
