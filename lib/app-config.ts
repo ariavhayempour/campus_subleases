@@ -1,1 +1,1 @@
-export const APP_NAME = 'Campus Subleases';
+export const APP_NAME = 'Student Subleases';

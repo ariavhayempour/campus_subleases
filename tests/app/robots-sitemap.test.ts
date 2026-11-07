@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import robots from '@/app/robots';
 import sitemap from '@/app/sitemap';
 
-const ORIGIN = 'https://campussubleases.com';
+const ORIGIN = 'https://studentsubleases.com';
 
 afterEach(() => {
   vi.unstubAllEnvs();

@@ -1,8 +1,8 @@
-# Campus Subleases
+# Student Subleases
 
 A website where college students sublease their own apartment, house, or room to other students.
 Students only (no landlords), free, and web only. Desktop-first and responsive down to phone
-width; the admin area is desktop-only. Live at [campussubleases.com](https://campussubleases.com).
+width; the admin area is desktop-only. Live at [studentsubleases.com](https://studentsubleases.com).
 
 It launches with UW–Madison, University of Michigan, and UCLA. New schools are data, not code.
 

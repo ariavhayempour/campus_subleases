@@ -40,14 +40,14 @@ describe('formatMessageTime', () => {
 
 describe('withUnreadPrefix', () => {
   it('adds, replaces, and removes the unread prefix', () => {
-    expect(withUnreadPrefix('Messages · Campus Subleases', 3)).toBe(
-      '(3) Messages · Campus Subleases',
+    expect(withUnreadPrefix('Messages · Student Subleases', 3)).toBe(
+      '(3) Messages · Student Subleases',
     );
-    expect(withUnreadPrefix('(3) Messages · Campus Subleases', 1)).toBe(
-      '(1) Messages · Campus Subleases',
+    expect(withUnreadPrefix('(3) Messages · Student Subleases', 1)).toBe(
+      '(1) Messages · Student Subleases',
     );
-    expect(withUnreadPrefix('(1) Messages · Campus Subleases', 0)).toBe(
-      'Messages · Campus Subleases',
+    expect(withUnreadPrefix('(1) Messages · Student Subleases', 0)).toBe(
+      'Messages · Student Subleases',
     );
   });
 });

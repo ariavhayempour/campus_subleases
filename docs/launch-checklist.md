@@ -18,12 +18,13 @@ here, only variable names.
 
 ## Vercel
 
-- [ ] Production domain `campussubleases.com` added to the project.
+- [ ] Production domain `studentsubleases.com` added to the project; the former domain
+      `campussubleases.com` (and its `www`) 308-redirects to it.
 - [ ] Every variable in `environment.md` set for the right environment (Production, and
       Preview for staging): Clerk keys, `CLERK_WEBHOOK_SIGNING_SECRET`, `DATABASE_URL`,
       `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`,
       `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_SENTRY_DSN`.
-- [ ] `NEXT_PUBLIC_SITE_URL=https://campussubleases.com` in Production.
+- [ ] `NEXT_PUBLIC_SITE_URL=https://studentsubleases.com` in Production.
       Include the `https://` scheme. It is baked in at build time, so set it before the
       production build and redeploy after any change. A value without a scheme breaks every page
       (`app/layout.tsx` builds `metadataBase` from it).
@@ -37,7 +38,7 @@ here, only variable names.
 - [ ] Email verification code required.
 - [ ] Bot protection on.
 - [ ] Owner has `publicMetadata.role = "admin"`.
-- [ ] Webhook endpoint `https://campussubleases.com/api/webhooks/clerk` subscribed to
+- [ ] Webhook endpoint `https://studentsubleases.com/api/webhooks/clerk` subscribed to
       `user.created`, `user.updated`, `user.deleted`; its signing secret is set as
       `CLERK_WEBHOOK_SIGNING_SECRET` in Vercel.
 - [ ] Session-token customization adds the `metadata` claim (Sessions, Customize session
@@ -64,7 +65,7 @@ here, only variable names.
 
 ## Mapbox
 
-- [ ] Token URL-restricted to `campussubleases.com` and the preview domains. TBD: the exact
+- [ ] Token URL-restricted to `studentsubleases.com` and the preview domains. TBD: the exact
       preview domain pattern is not recorded in docs.
 
 ## Sentry
@@ -80,5 +81,5 @@ here, only variable names.
 - [ ] Approve it as the admin.
 - [ ] Message the host from a second account and see the message arrive.
 - [ ] Run the cleanup cron:
-      `curl -H "Authorization: Bearer $CRON_SECRET" https://campussubleases.com/api/cron/cleanup`
+      `curl -H "Authorization: Bearer $CRON_SECRET" https://studentsubleases.com/api/cron/cleanup`
       returns 200.

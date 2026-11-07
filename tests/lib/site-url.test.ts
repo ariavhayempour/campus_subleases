@@ -3,8 +3,8 @@ import { siteUrl } from '@/lib/site-url';
 
 describe('siteUrl', () => {
   it('uses the configured origin without a trailing slash', () => {
-    expect(siteUrl('https://campussubleases.com/')).toBe('https://campussubleases.com');
-    expect(siteUrl('https://campussubleases.com')).toBe('https://campussubleases.com');
+    expect(siteUrl('https://studentsubleases.com/')).toBe('https://studentsubleases.com');
+    expect(siteUrl('https://studentsubleases.com')).toBe('https://studentsubleases.com');
   });
 
   it('falls back to the local dev server when unset or blank', () => {
